@@ -16,6 +16,17 @@
 :PROPERTIES:
 :NOTER_DOCUMENT: Resources/datasheets/MCP4728.pdf
 :END:
+**** I^{2}C Serial Interface Communications
+:PROPERTIES:
+:NOTER_PAGE: (29 . 0.0923076923076923)
+:END:
+***** I^{2}C Bus Characteristics
+:PROPERTIES:
+:NOTER_PAGE: (29 . 0.3290969899665552)
+:END:
+- Só se pode transferir quando o bus não estiver a ser usado
+- Durante a transferência, a data line tem de estar estável enquanto a clock line for HIGH.
+  - Mudanças à data line enquanto a clock line for HIGH é interpretado como um START ou STOP
 *** [[file:Resources/datasheets/pic32.pdf][PIC32]]
 **** [[file:Resources/datasheets/pic32_DMA.pdf][DMA]]
 :PROPERTIES:
