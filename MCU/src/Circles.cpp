@@ -1,4 +1,4 @@
-#if Plot
+#if Circles
 
 #include <Arduino.h>
 #include "Wire.h"
@@ -40,7 +40,7 @@ u16 BigSin[] = {
     845,  951,  1062, 1176, 1294, 1415, 1539, 1664, 1791, 1919,
 };
 
-u16 SmallSin[] = {
+u16 SmallSin[arrayCount(BigSin)] = {
     2048, 2112, 2176, 2240, 2303, 2364, 2425, 2484, 2541, 2597,
     2650, 2701, 2749, 2794, 2837, 2876, 2913, 2945, 2975, 3000,
     3022, 3040, 3054, 3064, 3070, 3072, 3070, 3064, 3054, 3040,
@@ -100,18 +100,18 @@ static void setCoordinates(u16 X, u16 Y) {
 
 void loop() {
     u16 *Sin;
-    if(Count < 150) {
+    if(Count < 15) {
         Sin = BigSin;
     } else {
         Sin = SmallSin;
     }
 
-    for(u32 I = 0; I < arrayCount(Sin); ++I) {
-        setCoordinates(Sin[(I+25) % arrayCount(Sin)], Sin[I]);
+    for(u32 I = 0; I < arrayCount(BigSin); ++I) {
+        setCoordinates(Sin[(I+25) % arrayCount(BigSin)], Sin[I]);
     }
 
-    Count = (Count + 1) % 300;
-    delay(1000);
+    Count = (Count + 1) % 30;
+    delay(23); // NOTE(nox): Frame time = 23ms + 10ms (from 100 setCoordinates!)
 }
 
 #endif
