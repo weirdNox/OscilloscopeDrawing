@@ -57,7 +57,7 @@ void setup() {
     if(Wire.available()) {
         int Result = Wire.read();
         Address = (0xC << 3) | ((Result >> 5) & 0x7);
-        Serial.printf("Current address: 0x%X\n\r", Address);
+        Serial.printf("Current address: 0x%X\r\n", Address);
     }
 
     // NOTE(nox): Write I2C Address bits - 5.6.8
@@ -86,7 +86,7 @@ void setup() {
     if(Wire.available()) {
         int Result = Wire.read();
         Address = (0xC << 3) | ((Result >> 5) & 0x7);
-        Serial.printf("New address: 0x%X\n\r", Address);
+        Serial.printf("New address: 0x%X\r\n", Address);
     }
 
     Serial.println("Setup done.");
