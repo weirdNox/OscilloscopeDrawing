@@ -96,9 +96,9 @@ int main(int, char**) {
         ImGui::SliderInt("Selected frame", &SelectedFrame, 0, FrameCount-1);
         if(ImGui::Button("Exportar para C")) {
             FILE *File = fopen("generated_header.h", "w");
-            fprintf(File, "point FramePoints[] = {\n    ");
+            fprintf(File, "point FramePoints[] = {");
             for(int I = 0; I < Frame->ActiveCount; ++I) {
-                if(((I+1) % 7) == 0) {
+                if((I % 7) == 0) {
                     fprintf(File, "\n    ");
                 }
                 int ActiveIndex = Frame->Order[I];
