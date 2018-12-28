@@ -39,6 +39,14 @@ point FramePoints[] = {
     {2240, 512}, {2432, 576}, {1984, 512}, {1792, 512}, {1728, 576}, {1600, 704}, {1600, 768},
 };
 
+Timer4 Timer = {};
+bool ShouldUpdate = false;
+
+static void __attribute__((interrupt)) setUpdateFlag() {
+    ShouldUpdate = true;
+    clearIntFlag(_TIMER_4_IRQ);
+}
+
 void setup() {
     Serial.begin(115200);
     Serial.println("Setup...");
@@ -67,6 +75,11 @@ void setup() {
     }
     delay(50);
 
+    // NOTE(nox): 30 FPS
+    Timer.setFrequency(30);
+    Timer.attachInterrupt(setUpdateFlag);
+    Timer.start();
+
     Serial.println("Setup done.");
 }
 
@@ -85,12 +98,13 @@ static void setCoordinates(u16 X, u16 Y) {
 }
 
 void loop() {
-    for(u32 I = 0; I < arrayCount(FramePoints); ++I) {
-        point *P = FramePoints + I;
-        setCoordinates(P->X, P->Y);
+    if(ShouldUpdate) {
+        for(u32 I = 0; I < arrayCount(FramePoints); ++I) {
+            point *P = FramePoints + I;
+            setCoordinates(P->X, P->Y);
+        }
+        ShouldUpdate = false;
     }
-
-    delay(30);
 }
 
 #endif
