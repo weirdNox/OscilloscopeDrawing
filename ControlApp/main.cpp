@@ -87,9 +87,10 @@ int main(int, char**) {
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Grid
         ImGui::Begin("Grid", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        frame *PrevFrame = SelectedFrame > 0 ? Frames + SelectedFrame - 1 : 0;
         for(int I = 0; I < GridSize*GridSize; I++) {
             ImGui::PushID(I);
-            if(ImGui::Selectable("", Frame->Active[I], 0, ImVec2(5, 10))) {
+            if(ImGui::GridSquare(Frame->Active[I], PrevFrame ? PrevFrame->Active[I] : 0)) {
                 if(!Frame->Active[I] && Frame->ActiveCount < MaxActive) {
                     Frame->Order[Frame->ActiveCount++] = I;
                     Frame->Active[I] = true;
