@@ -8,6 +8,8 @@
 #+LATEX_HEADER_EXTRA: \usepackage{xcolor}
 #+LATEX_HEADER_EXTRA: \hypersetup{colorlinks, linkcolor={red!50!black}, citecolor={blue!50!black}, urlcolor={blue!80!black}}
 
+* Montagem com auxílio da breadboard
+
 * Geração do /array/ com os valores sinusoidais
 O próximo excerto de código gera 100 valores da função $2048 + 2047 \sin t$, com $t \in [0, 2\pi[$.
 #+BEGIN_SRC matlab :results output :exports both
@@ -75,13 +77,43 @@ output =
 #+end_example
 
 * Diário de bordo
-** Dia 1
-Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se verificava. Acabamos por utilizar uma frequência de 1Mhz, com as resistências de pull-up adequadas (4.7kOhms, valor entre 1 e 10Mhz). A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de transferência máxima suportada por esta MCU.
+** Primeira aula
+A primeira tarefa foi ler cuidadosa a datasheet do MCP4728, assim como alguns pormenores sobre o funcionamento do pic32, mais especificamente relativamente à comunicação série e i2c.
+Efetuamos a montagem cuidadosa do circuito pedido, assim como o seu desenho a computador recorrendo ao programa fritzing. A montagem foi aprovada pelo professor, tendo sido possível nessa mesma aula obter o endereço i2c do MCP4728.
+
+** Segunda aula
+Neste dia focamo-nos na comunicação i2c, mais concretamente no envio analógico de um sinal e posterior leitura utilizando o multímetro. Infelizmente passamos a maior parte da aula sem obter grande sucesso devido ao facto que o multímetro se encontrava a efectuar medições erradas. Chegando a casa, extamente com a mesma montagem, verificamos o correto funcionamento do circuito.
+
+** Dia 1 de trabalho autónomo
+O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a sua medição. Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se verificava. Acabamos por utilizar uma frequência de 1Mhz, alterando o valor das resistências de pull-up para um valor adequado - 4.7kOhms, valor entre 1 e 10Mhz como detalhado na datasheet para esta frequência de relógio. A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de transferência máxima suportada por esta MCU.
 
 Frequência i2c = 1Mhz
 Frequência i2c efetivamente medida = 1/(1.1us) Hz = 910kHz
+Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
 Pausas encontradas:
-Entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
-Entre bytes+ACK (5 pausas): 2.66us
-Entre o 6 byte+ACK de dados e o STOP: 7.88us
-Medido, o período é de 95us, assim como o cálculo (realizado com a frequência medida, e o número de bits de cada comando)
+- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
+- p2, entre bytes+ACK (5 pausas): 2.66us
+- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
+- p4, entre o STOP e o posterior START do próximo envio: 8.5us
+Assim, desprezando o tempo do START e STOP, o cáculo do periodo é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções.)
+
+Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos.
+
+** Dia 2 de trabalho autónomo
+Começamos por verificar que tudo estava funcional e que poderíamos prosseguir para mais testes. Visto que tudo estava OK decidimos tirar fotos das formas de onda visualizadas no osciloscópio, assim como do modo XY. Neste momento apenas testamos a possibilidade de enviar circunferências, de raios diferentes, com 5s de espaçamento entre elas.
+
+Como próximo passo decidimos começar por fazer uma letra, ainda manualmente. Desenhamos no software Inkscape um C, num documento com 4096 pontos de comprimento e largura, e amostramos 20 pontos, definindo as suas coordenadas X e Y. O teste foi um sucesso.
+
+Desenhar as formas manualmente, ie, papel e lápis, não é opção visto que seria extremamente trabalhoso, pelo que ponderamos duas opções:
+Opção 1
+- Desenhar numa grelha no Excel a forma que queremos
+- Exportar para CSV
+- Implementar um parser CSV -> C
+Opção 2: Criar um programa em C, com interface gráfica, para que com auxílio de uma grelha o utilizador possa desenhar a forma geométrica que quer e esta seja enviada via comunicação série para o pic32
+
+Optamos pelo desenvolvimento do programa em C, e iniciamos o seu desenvolvimento. Implementamos a interface gráfica recorrendo à biblioteca Dear ImGui, o que nos facilitou imenso o trabalho, contudo ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o mapeamento dos pontos selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação série.
+
+** Dia 3 de trabalho autónomo
+
+Adicionamos a possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame. O tempo de cada frame pode ser escolhido entre 33.333ms, ou seja, aproximadamente 34ms, e 10000ms (10s).
+Adicionamos ainda
