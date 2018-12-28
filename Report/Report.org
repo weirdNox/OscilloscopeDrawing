@@ -124,4 +124,4 @@ Optamos pelo desenvolvimento do programa em C, e iniciamos o seu desenvolvimento
 ** Dia 3 de trabalho autónomo
 
 Adicionamos a possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame. O tempo de cada frame pode ser escolhido entre 33.333ms, ou seja, aproximadamente 34ms, e 10000ms (10s).
-Adicionamos ainda
+Adicionamos ainda a possibilidade
