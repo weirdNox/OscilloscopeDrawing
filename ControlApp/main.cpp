@@ -7,6 +7,16 @@
 
 #include <stdio.h>
 
+typedef  uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+typedef   int8_t  s8;
+typedef  int16_t s16;
+typedef  int32_t s32;
+
+#define arrayCount(Arr) ((sizeof(Arr))/(sizeof(*Arr)))
+
 static void glfwErrorCallback(int Error, const char* Description) {
     fprintf(stderr, "GLFW Error %d: %s\n", Error, Description);
 }
@@ -14,17 +24,19 @@ static void glfwErrorCallback(int Error, const char* Description) {
 enum {
     GridSize = 64,
     MaxActive = 300,
-    MaxFrames = 10
+    MaxFrames = 10, // NOTE(nox): Limit to achieve 30 FPS
+    FPS = 30,
 };
 
 typedef struct {
-    int ActiveCount;
-    int Order[MaxActive];
+    u32 ActiveCount;
+    u32 Order[MaxActive];
     bool Active[GridSize*GridSize];
+    s32 NumMilliseconds;
 } frame;
 
-int FrameCount = 1;
-int SelectedFrame = 0;
+s32 FrameCount = 1;
+s32 SelectedFrame = 0;
 frame Frames[MaxFrames] = {0};
 
 int main(int, char**) {
@@ -40,7 +52,7 @@ int main(int, char**) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     glfwWindowHint(GLFW_MAXIMIZED, true);
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Projeto de Computadores", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Control Application", NULL, NULL);
     if(window == NULL) {
         return 1;
     }
@@ -72,7 +84,9 @@ int main(int, char**) {
 
         frame *Frame = Frames + SelectedFrame;
 
-        ImGui::Begin("Grelha", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        // ------------------------------------------------------------------------------------------
+        // NOTE(nox): Grid
+        ImGui::Begin("Grid", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
         for(int I = 0; I < GridSize*GridSize; I++) {
             ImGui::PushID(I);
             if(ImGui::Selectable("", Frame->Active[I], 0, ImVec2(5, 10))) {
@@ -88,29 +102,49 @@ int main(int, char**) {
         }
         ImGui::End();
 
-        ImGui::Begin("Comandos", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        // ------------------------------------------------------------------------------------------
+        // NOTE(nox): Commands
+        ImGui::Begin("Commands", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+
         ImGui::SliderInt("Frame count", &FrameCount, 1, MaxFrames);
         if(SelectedFrame >= FrameCount) {
             SelectedFrame = FrameCount-1;
         }
         ImGui::SliderInt("Selected frame", &SelectedFrame, 0, FrameCount-1);
-        if(ImGui::Button("Exportar para C")) {
+
+        if(ImGui::Button("Export to C header")) {
             FILE *File = fopen("generated_header.h", "w");
-            fprintf(File, "point FramePoints[] = {");
-            for(int I = 0; I < Frame->ActiveCount; ++I) {
-                if((I % 7) == 0) {
-                    fprintf(File, "\n    ");
+            fprintf(File, "frame Frames[] = {");
+            for(int I = 0; I < FrameCount; ++I) {
+                frame *Frame = Frames + I;
+                fprintf(File, "\n    {\n        %d, %d, {", (Frame->NumMilliseconds*FPS)/1000,
+                        Frame->ActiveCount);
+                for(int J = 0; J < Frame->ActiveCount; ++J) {
+                    if((J % 7) == 0) {
+                        fprintf(File, "\n            ");
+                    }
+                    int ActiveIndex = Frame->Order[J];
+                    int X = (4096*(ActiveIndex % GridSize)) / GridSize;
+                    int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
+                    fprintf(File, "{%d, %d}, ", X, Y);
                 }
-                int ActiveIndex = Frame->Order[I];
-                int X = (4096*(ActiveIndex % GridSize)) / GridSize;
-                int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
-                fprintf(File, "{%d, %d}, ", X, Y);
+                fprintf(File, "\n        }\n    },");
             }
-            fprintf(File, "\n};\n");
+            fprintf(File, "\n};");
             fclose(File);
         }
+        ImGui::End();
 
-        if(ImGui::Button("Apagar frame")) {
+        // ------------------------------------------------------------------------------------------
+        // NOTE(nox): Frame settings
+        ImGui::Begin("Frame settings", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Frame %d", SelectedFrame);
+        ImGui::Text("Number of points: %d out of %d", Frame->ActiveCount, MaxActive);
+        if(Frame->NumMilliseconds < 34) {
+            Frame->NumMilliseconds = 34;
+        }
+        ImGui::SliderInt("Time (ms)", &Frame->NumMilliseconds, 34, 10000);
+        if(ImGui::Button("Clear frame")) {
             Frame->ActiveCount = 0;
             for(int I = 0; I < GridSize*GridSize; ++I) {
                 Frame->Active[I] = false;
