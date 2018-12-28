@@ -84,6 +84,10 @@ Efetuamos a montagem cuidadosa do circuito pedido, assim como o seu desenho a co
 ** Segunda aula
 Neste dia focamo-nos na comunicação i2c, mais concretamente no envio analógico de um sinal e posterior leitura utilizando o multímetro. Infelizmente passamos a maior parte da aula sem obter grande sucesso devido ao facto que o multímetro se encontrava a efectuar medições erradas. Chegando a casa, extamente com a mesma montagem, verificamos o correto funcionamento do circuito.
 
+#+NAME:   fig:Wiring
+#+CAPTION: Representação das ligações elétricas
+file:Resources/pictures/breadboard_setup.png
+
 ** Dia 1 de trabalho autónomo
 O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a sua medição. Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se verificava. Acabamos por utilizar uma frequência de 1Mhz, alterando o valor das resistências de pull-up para um valor adequado - 4.7kOhms, valor entre 1 e 10Mhz como detalhado na datasheet para esta frequência de relógio. A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de transferência máxima suportada por esta MCU.
 
@@ -96,6 +100,10 @@ Pausas encontradas:
 - p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
 - p4, entre o STOP e o posterior START do próximo envio: 8.5us
 Assim, desprezando o tempo do START e STOP, o cáculo do periodo é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções.)
+
+#+NAME:   fig:Timings
+#+CAPTION: Diagrama ilustrativo dos tempos de envio
+file:Resources/pictures/timings_diagram.png
 
 Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos.
 
