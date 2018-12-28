@@ -73,3 +73,15 @@ output =
          1446, 1499, 1555, 1612, 1671, 1732, 1793, 1856, 1920, 1984,
      };"
 #+end_example
+
+* Diário de bordo
+** Dia 1
+Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se verificava. Acabamos por utilizar uma frequência de 1Mhz, com as resistências de pull-up adequadas (4.7kOhms, valor entre 1 e 10Mhz). A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de transferência máxima suportada por esta MCU.
+
+Frequência i2c = 1Mhz
+Frequência i2c efetivamente medida = 1/(1.1us) Hz = 910kHz
+Pausas encontradas:
+Entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
+Entre bytes+ACK (5 pausas): 2.66us
+Entre o 6 byte+ACK de dados e o STOP: 7.88us
+Medido, o período é de 95us, assim como o cálculo (realizado com a frequência medida, e o número de bits de cada comando)
