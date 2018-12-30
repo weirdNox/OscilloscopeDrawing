@@ -28,9 +28,14 @@ enum {
 };
 
 typedef struct {
+    bool Active;
+    bool DisablePathBefore;
+} point;
+
+typedef struct {
     u32 ActiveCount;
     u32 Order[MaxActive];
-    bool Active[GridSize*GridSize];
+    point Points[GridSize*GridSize];
     ImVec2 Pos[GridSize*GridSize];
     s32 NumMilliseconds;
 } frame;
@@ -112,12 +117,14 @@ int main(int, char**) {
         ImDrawList* DrawList = ImGui::GetWindowDrawList();
         for(int I = 0; I < GridSize*GridSize; I++) {
             ImGui::PushID(I);
+            point *Point = Frame->Points + I;
             Frame->Pos[I] = ImGui::GetCursorScreenPos();
-            if(ImGui::GridSquare(Frame->Active[I], OnionSkinning && PrevFrame ? PrevFrame->Active[I] : 0) &&
-               !Frame->Active[I] && Frame->ActiveCount < MaxActive)
+            if(ImGui::GridSquare(Point->Active, (OnionSkinning && PrevFrame) ? PrevFrame->Points[I].Active : 0))
             {
-                Frame->Order[Frame->ActiveCount++] = I;
-                Frame->Active[I] = true;
+                if(!Point->Active && Frame->ActiveCount < MaxActive) {
+                    Frame->Order[Frame->ActiveCount++] = I;
+                    Point->Active = true;
+                }
             }
             if((I % GridSize) < GridSize-1) {
                 ImGui::SameLine();
@@ -161,7 +168,7 @@ int main(int, char**) {
         if(ImGui::Button("Clear frame")) {
             Frame->ActiveCount = 0;
             for(int I = 0; I < GridSize*GridSize; ++I) {
-                Frame->Active[I] = false;
+                Frame->Points[I].Active = false;
             }
         }
 
@@ -180,7 +187,7 @@ int main(int, char**) {
                 u32 Best;
                 float BestDist = FLT_MAX;
                 for(u32 Index = 0; Index < GridSize*GridSize; ++Index) {
-                    if(Frame->Active[Index] && !Visited[Index]) {
+                    if(Frame->Points[Index].Active && !Visited[Index]) {
                         s32 DeltaX = (Index % GridSize) - CurrentX;
                         s32 DeltaY = (Index / GridSize) - CurrentY;
                         float Dist = sqrt(DeltaX*DeltaX + DeltaY*DeltaY);
