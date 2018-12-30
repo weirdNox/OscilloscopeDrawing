@@ -101,6 +101,7 @@ int main(int, char**) {
     frame Frames[MaxFrames] = {0};
     bool OnionSkinning = false;
     bool ShowPath = true;
+    s32 LastSelected = -1;
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -111,6 +112,8 @@ int main(int, char**) {
         frame *Frame = Frames + SelectedFrame - 1;
         frame *PrevFrame = SelectedFrame > 1 ? Frames + SelectedFrame - 2 : 0;
 
+        s32 ToHighlight = LastSelected;
+
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Grid
         ImGui::Begin("Grid", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
@@ -119,13 +122,20 @@ int main(int, char**) {
             ImGui::PushID(I);
             point *Point = Frame->Points + I;
             Frame->Pos[I] = ImGui::GetCursorScreenPos();
-            if(ImGui::GridSquare(Point->Active, (OnionSkinning && PrevFrame) ? PrevFrame->Points[I].Active : 0))
+            bool Hovered;
+            if(ImGui::GridSquare(Point->Active, (OnionSkinning && PrevFrame) ? PrevFrame->Points[I].Active : 0, &Hovered))
             {
+                LastSelected = I;
                 if(!Point->Active && Frame->ActiveCount < MaxActive) {
                     Frame->Order[Frame->ActiveCount++] = I;
                     Point->Active = true;
                 }
             }
+
+            if(Hovered && Point->Active) {
+                ToHighlight = I;
+            }
+
             if((I % GridSize) < GridSize-1) {
                 ImGui::SameLine();
             }
@@ -136,8 +146,8 @@ int main(int, char**) {
             for(u32 I = 1; I < Frame->ActiveCount; ++I) {
                 ImVec2 Pos1 = Frame->Pos[Frame->Order[I-1]];
                 ImVec2 Pos2 = Frame->Pos[Frame->Order[I]];
-                DrawList->AddLine(ImVec2(Pos1.x + 2, Pos1.y + 4), ImVec2(Pos2.x + 2, Pos2.y + 4),
-                                  IM_COL32(255, 0, 0, 200));
+                ImU32 Col = Frame->Order[I] == ToHighlight ? IM_COL32(255, 255, 255, 255) : IM_COL32(255, 0, 0, 200);
+                DrawList->AddLine(ImVec2(Pos1.x + 2, Pos1.y + 4), ImVec2(Pos2.x + 2, Pos2.y + 4), Col);
             }
         }
         ImGui::End();

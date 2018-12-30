@@ -1,7 +1,7 @@
 #include <imgui/imgui_internal.h>
 
 namespace ImGui {
-    static bool GridSquare(bool Selected, bool PreviousSelected) {
+    static bool GridSquare(bool Selected, bool PreviousSelected, bool *Hovered) {
         ImGuiWindow* Window = GetCurrentWindow();
         if(Window->SkipItems) {
             return false;
@@ -32,9 +32,9 @@ namespace ImGui {
         bool Ignored1, Ignored2;
         ButtonBehavior(Bb, Id, &Ignored1, &Ignored2, 0);
 
-        bool Hovered = IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-        bool Pressed = Hovered && IsMouseDown(0);
-        if(Pressed || Hovered) {
+        *Hovered = IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+        bool Pressed = *Hovered && IsMouseDown(0);
+        if(Pressed || *Hovered) {
             if (!G.NavDisableMouseHover && G.NavWindow == Window && G.NavLayer == Window->DC.NavLayerCurrent) {
                 G.NavDisableHighlight = true;
                 SetNavID(Id, Window->DC.NavLayerCurrent);
@@ -48,8 +48,8 @@ namespace ImGui {
         }
 
         // Render
-        if(Hovered || Selected) {
-            const ImU32 Col = GetColorU32(Pressed ? ImGuiCol_HeaderActive : Hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
+        if(*Hovered || Selected) {
+            const ImU32 Col = GetColorU32(Pressed ? ImGuiCol_HeaderActive : *Hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
             RenderFrame(Bb.Min, Bb.Max, Col, false, 0.0f);
             RenderNavHighlight(Bb, Id, ImGuiNavHighlightFlags_TypeThin | ImGuiNavHighlightFlags_NoRounding);
         } else if(PreviousSelected) {
