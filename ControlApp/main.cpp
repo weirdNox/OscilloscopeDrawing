@@ -164,6 +164,40 @@ int main(int, char**) {
                 Frame->Active[I] = false;
             }
         }
+
+        if(ImGui::Button("\"Optimize\" path") && Frame->ActiveCount > 0) {
+            u32 NumVisited = 0;
+            bool Visited[GridSize*GridSize] = {0};
+
+            u32 Current = Frame->Order[0];
+            Visited[Current] = true;
+            ++NumVisited;
+
+            while(NumVisited < Frame->ActiveCount) {
+                u32 CurrentX = Current % GridSize;
+                u32 CurrentY = Current / GridSize;
+
+                u32 Best;
+                float BestDist = FLT_MAX;
+                for(u32 Index = 0; Index < GridSize*GridSize; ++Index) {
+                    if(Frame->Active[Index] && !Visited[Index]) {
+                        s32 DeltaX = (Index % GridSize) - CurrentX;
+                        s32 DeltaY = (Index / GridSize) - CurrentY;
+                        float Dist = sqrt(DeltaX*DeltaX + DeltaY*DeltaY);
+                        if(Dist < BestDist) {
+                            Best = Index;
+                            BestDist = Dist;
+                        }
+                    }
+                }
+
+                Frame->Order[NumVisited++] = Best;
+                Visited[Best] = true;
+                Current = Best;
+            }
+
+            ShowPath = true;
+        }
         ImGui::End();
 
         // ------------------------------------------------------------------------------------------
