@@ -1,11 +1,8 @@
 #!/usr/bin/env sh
-mkdir build >/dev/null 2>&1
-if [ ! -f "build/rglfw.o" ]
+if [ ! -d "build/" ]
 then
+    mkdir build
     cc -O2 external/rglfw.c -c -o build/rglfw.o
-fi
-if [ ! -f "build/imgui.o" ]
-then
     c++ -O2 -Iexternal/ external/imgui/imgui.cpp -c -o build/imgui.o
     c++ -O2 -Iexternal/ external/imgui/imgui_draw.cpp -c -o build/imgui_draw.o
     c++ -O2 -Iexternal/ external/imgui/imgui_widgets.cpp -c -o build/imgui_widgets.o

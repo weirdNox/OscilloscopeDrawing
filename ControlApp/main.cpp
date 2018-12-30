@@ -114,6 +114,7 @@ int main(int, char**) {
 
         s32 ToHighlight = LastSelected;
 
+
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Grid
         ImGui::Begin("Grid", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
@@ -146,11 +147,13 @@ int main(int, char**) {
             for(u32 I = 1; I < Frame->ActiveCount; ++I) {
                 ImVec2 Pos1 = Frame->Pos[Frame->Order[I-1]];
                 ImVec2 Pos2 = Frame->Pos[Frame->Order[I]];
-                ImU32 Col = Frame->Order[I] == ToHighlight ? IM_COL32(255, 255, 255, 255) : IM_COL32(255, 0, 0, 200);
+                u8 Alpha = Frame->Points[Frame->Order[I]].DisablePathBefore ? 50 : 255;
+                ImU32 Col = Frame->Order[I] == ToHighlight ? IM_COL32(255, 255, 255, Alpha) : IM_COL32(255, 0, 0, Alpha);
                 DrawList->AddLine(ImVec2(Pos1.x + 2, Pos1.y + 4), ImVec2(Pos2.x + 2, Pos2.y + 4), Col);
             }
         }
         ImGui::End();
+
 
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): General settings
@@ -158,8 +161,12 @@ int main(int, char**) {
         ImGui::SliderInt("Frame count", &FrameCount, 1, MaxFrames);
         FrameCount = clamp(1, FrameCount, MaxFrames);
 
+        s32 OldSelectedFrame = SelectedFrame;
         ImGui::SliderInt("Selected frame", &SelectedFrame, 1, FrameCount);
         SelectedFrame = clamp(1, SelectedFrame, FrameCount);
+        if(OldSelectedFrame != SelectedFrame) {
+            LastSelected = -1;
+        }
 
         ImGui::Checkbox("Onion skinning", &OnionSkinning);
         ImGui::Checkbox("Show path", &ShowPath);
@@ -178,8 +185,11 @@ int main(int, char**) {
         if(ImGui::Button("Clear frame")) {
             Frame->ActiveCount = 0;
             for(int I = 0; I < GridSize*GridSize; ++I) {
-                Frame->Points[I].Active = false;
+                point *Point = Frame->Points + I;
+                Point->Active = false;
+                Point->DisablePathBefore = false;
             }
+            LastSelected = -1;
         }
 
         if(ImGui::Button("\"Optimize\" path") && Frame->ActiveCount > 0) {
@@ -213,9 +223,40 @@ int main(int, char**) {
                 Current = Best;
             }
 
+            for(u32 I = 0; I < Frame->ActiveCount; ++I) {
+                Frame->Points[Frame->Order[I]].DisablePathBefore = false;
+            }
+
             ShowPath = true;
         }
         ImGui::End();
+
+
+        // ------------------------------------------------------------------------------------------
+        // NOTE(nox): Point settings
+        ImGui::Begin("Point settings", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        if(LastSelected >= 0) {
+            point *Point = &Frame->Points[LastSelected];
+            ImGui::Text("Point %d", LastSelected);
+            ImGui::Checkbox("Disable drawing before moving to this point", &Point->DisablePathBefore);
+            if(ImGui::Button("Delete point")) {
+                u32 OrderIdx;
+                for(OrderIdx = 0; OrderIdx < Frame->ActiveCount; ++OrderIdx) {
+                    if(Frame->Order[OrderIdx] == LastSelected) {
+                        break;
+                    }
+                }
+                memcpy(Frame->Order + OrderIdx, Frame->Order + OrderIdx + 1,
+                       sizeof(*Frame->Order)*(MaxActive-1-OrderIdx));
+                --Frame->ActiveCount;
+                *Point = (point){0};
+                LastSelected = -1;
+            }
+        } else {
+            ImGui::Text("No point is selected!");
+        }
+        ImGui::End();
+
 
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Commands
