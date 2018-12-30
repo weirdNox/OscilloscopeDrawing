@@ -21,8 +21,8 @@ typedef  int32_t s32;
 
 enum {
     GridSize = 64,
-    MaxActive = 300,
-    MaxFrames = 10, // NOTE(nox): Limit to achieve 30 FPS
+    MaxFrames = 10,
+    MaxActive = 300, // NOTE(nox): Limit to achieve 30 FPS
     FPS = 30,
     MinFrameTimeMs = (1000 + FPS - 1)/FPS
 };
@@ -31,6 +31,7 @@ typedef struct {
     u32 ActiveCount;
     u32 Order[MaxActive];
     bool Active[GridSize*GridSize];
+    ImVec2 Pos[GridSize*GridSize];
     s32 NumMilliseconds;
 } frame;
 
@@ -94,6 +95,7 @@ int main(int, char**) {
     s32 SelectedFrame = 1;
     frame Frames[MaxFrames] = {0};
     bool OnionSkinning = false;
+    bool ShowPath = true;
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -102,13 +104,15 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         frame *Frame = Frames + SelectedFrame - 1;
+        frame *PrevFrame = SelectedFrame > 1 ? Frames + SelectedFrame - 2 : 0;
 
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Grid
         ImGui::Begin("Grid", 0, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
-        frame *PrevFrame = SelectedFrame > 1 ? Frames + SelectedFrame - 2 : 0;
+        ImDrawList* DrawList = ImGui::GetWindowDrawList();
         for(int I = 0; I < GridSize*GridSize; I++) {
             ImGui::PushID(I);
+            Frame->Pos[I] = ImGui::GetCursorScreenPos();
             if(ImGui::GridSquare(Frame->Active[I], OnionSkinning && PrevFrame ? PrevFrame->Active[I] : 0) &&
                !Frame->Active[I] && Frame->ActiveCount < MaxActive)
             {
@@ -119,6 +123,15 @@ int main(int, char**) {
                 ImGui::SameLine();
             }
             ImGui::PopID();
+        }
+
+        if(ShowPath) {
+            for(u32 I = 1; I < Frame->ActiveCount; ++I) {
+                ImVec2 Pos1 = Frame->Pos[Frame->Order[I-1]];
+                ImVec2 Pos2 = Frame->Pos[Frame->Order[I]];
+                DrawList->AddLine(ImVec2(Pos1.x + 2, Pos1.y + 4), ImVec2(Pos2.x + 2, Pos2.y + 4),
+                                  IM_COL32(255, 0, 0, 200));
+            }
         }
         ImGui::End();
 
@@ -132,6 +145,7 @@ int main(int, char**) {
         SelectedFrame = clamp(1, SelectedFrame, FrameCount);
 
         ImGui::Checkbox("Onion skinning", &OnionSkinning);
+        ImGui::Checkbox("Show path", &ShowPath);
         ImGui::End();
 
 

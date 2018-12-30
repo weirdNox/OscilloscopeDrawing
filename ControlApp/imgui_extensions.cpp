@@ -1,7 +1,7 @@
 #include <imgui/imgui_internal.h>
 
 namespace ImGui {
-    bool GridSquare(bool Selected, bool PreviousSelected) {
+    static bool GridSquare(bool Selected, bool PreviousSelected) {
         ImGuiWindow* Window = GetCurrentWindow();
         if(Window->SkipItems) {
             return false;
@@ -53,7 +53,7 @@ namespace ImGui {
             RenderFrame(Bb.Min, Bb.Max, Col, false, 0.0f);
             RenderNavHighlight(Bb, Id, ImGuiNavHighlightFlags_TypeThin | ImGuiNavHighlightFlags_NoRounding);
         } else if(PreviousSelected) {
-            const ImU32 Col = GetColorU32(ImVec4(0, 0.2176f, 0.0701f, 0.6f));
+            const ImU32 Col = GetColorU32(IM_COL32(52, 80, 99, 70));
             RenderFrame(Bb.Min, Bb.Max, Col, false, 0.0f);
             RenderNavHighlight(Bb, Id, ImGuiNavHighlightFlags_TypeThin | ImGuiNavHighlightFlags_NoRounding);
         }
