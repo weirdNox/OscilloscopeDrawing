@@ -164,12 +164,12 @@ int main(int, char**) {
                         Frame->ActiveCount);
                 for(int J = 0; J < Frame->ActiveCount; ++J) {
                     if((J % 7) == 0) {
-                        fprintf(File, "\n            ");
+                        fprintf(File, "\n           ");
                     }
                     int ActiveIndex = Frame->Order[J];
                     int X = (4096*(ActiveIndex % GridSize)) / GridSize;
                     int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
-                    fprintf(File, "{%d, %d}, ", X, Y);
+                    fprintf(File, " {%d, %d},", X, Y);
                 }
                 fprintf(File, "\n        }\n    },");
             }
