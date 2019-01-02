@@ -1,18 +1,127 @@
 #+TITLE: Projeto de Computadores
+#+SUBTITLE: Desenho de figuras arbitrárias usando um \acs{DAC} com o modo XY
 #+AUTHOR: André Aragão e Gonçalo Santos
 #+LANGUAGE: pt
 #+LATEX_HEADER: \usepackage[margin=1in]{geometry}
 #+LATEX_HEADER: \usepackage[portuguese]{babel}
 #+LATEX_HEADER: \usepackage{indentfirst}
 #+LATEX_HEADER: \usepackage[section]{placeins}
+#+LATEX_HEADER: \usepackage[printonlyused]{acronym}
 #+LATEX_HEADER_EXTRA: \usepackage{xcolor}
 #+LATEX_HEADER_EXTRA: \hypersetup{colorlinks, linkcolor={red!50!black}, citecolor={blue!50!black}, urlcolor={blue!80!black}}
 
-* Montagem com auxílio da breadboard
+* Introdução
+Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
+do osciloscópio (ou XYZ nos analógicos).
 
-* Geração do /array/ com os valores sinusoidais
-O próximo excerto de código gera 100 valores da função $2048 + 2047 \sin t$, com $t \in [0, 2\pi[$.
-#+BEGIN_SRC matlab :results output :exports both
+Este relatório está dividido em 2 secções principais:
+- Diário de bordo :: Nesta secção apresentamos o trabalho desenvolvido e os problemas encontrados em cada
+     dia de trabalho
+- Detalhes técnicos :: Nesta secção são apresentados todos os detalhes técnicos do nosso projeto
+
+* Diário de bordo
+** [2018-12-14 Fri] Primeira aula PL
+Foi nesta aula que foram anunciados os projetos que tinham sido atribuídos a cada equipa, ficando a nossa
+equipa com o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]]. Assim que soubemos qual era o nosso, começámos a ler cuidadosamente a /datasheet/
+correspondente. Também aproveitámos para rever o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o sistema de comunicação
+usado pelo nosso conversor.
+
+Ao fim de algum tempo, efetuámos a montagem cuidadosa do circuito pedido, assim como [[fig:Wiring][o seu desenho]] a
+computador recorrendo ao programa [[http://fritzing.org/home/][Fritzing]]. Assim que a montagem foi aprovada pelo professor, escrevemos
+um programa simples que fazia uma chamada a todos os endereços \ac{I2C} possíveis para termos a certeza
+que estávamos a ter uma comunicação bem sucedida com o dispositivo.
+
+#+NAME: fig:Wiring
+#+CAPTION: Representação das ligações elétricas
+[[file:Pictures/breadboard_setup.png]]
+
+Não só descobrimos que a montagem tinha sido feita corretamente, uma vez que estávamos a receber um
+\texttt{ACK} do MCP4728, mas também que o seu endereço não era o que vinha por defeito da fábrica -
+\texttt{0x60} - mas sim \texttt{0x61} (este dispositivo tem os 3 \ac{LSB} de endereço configuráveis, guardados
+numa EEPROM).
+** TODO Trabalho em casa
+Implementação do General Read Address.
+
+** [2018-12-21 Fri] Segunda aula PL
+Neste dia, focamo-nos em tentar enviar um comando \ac{I2C} para definir uma tensão analógica numa das 4
+saídas do MCP4728.
+
+Infelizmente, passámos a maior parte da aula sem obter grande sucesso. Pensamos que o multímetro se
+encontrava a efectuar medições erradas, porque, chegando a casa, e sem nenhuma modificação quer a nível
+de montagem, quer a nível de código, verificámos que estava a funcionar o corretamente.
+
+Conseguimos ainda variar a tensão entre 2 pontos pré-definidos.
+
+** Dia 1 de trabalho autónomo
+O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a
+sua medição. Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos
+que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema
+foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se
+verificava. Acabamos por utilizar uma frequência de 1Mhz, alterando o valor das resistências de pull-up
+para um valor adequado - 4.7kOhms, valor entre 1 e 10Mhz como detalhado na datasheet para esta frequência
+de relógio. A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de
+transferência máxima suportada por esta MCU.
+
+Frequência \ac{I2C} = 1Mhz
+Frequência \ac{I2C} efetivamente medida = 1/(1.1us) Hz = 910kHz
+Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
+Pausas encontradas:
+- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
+- p2, entre bytes+ACK (5 pausas): 2.66us
+- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
+- p4, entre o STOP e o posterior START do próximo envio: 8.5us
+Assim, desprezando o tempo do START e STOP, o cáculo do periodo é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções.)
+
+#+NAME:   fig:Timings
+#+CAPTION: Diagrama ilustrativo dos tempos de envio
+[[file:Pictures/timings_diagram.png]]
+
+Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos.
+
+** Dia 2 de trabalho autónomo
+Começamos por verificar que tudo estava funcional e que poderíamos prosseguir para mais testes. Visto que
+tudo estava OK decidimos tirar fotos das formas de onda visualizadas no osciloscópio, assim como do modo
+XY. Neste momento apenas testamos a possibilidade de enviar circunferências, de raios diferentes, com 5s
+de espaçamento entre elas.
+
+Como próximo passo decidimos começar por fazer uma letra, ainda manualmente. Desenhamos no software
+Inkscape um C, num documento com 4096 pontos de comprimento e largura, e amostramos 20 pontos, definindo
+as suas coordenadas X e Y. O teste foi um sucesso.
+
+Desenhar as formas manualmente, ie, papel e lápis, não é opção visto que seria extremamente trabalhoso,
+pelo que ponderamos duas opções:
+
+Opção 1
+- Desenhar numa grelha no Excel a forma que queremos
+- Exportar para CSV
+- Implementar um parser CSV -> C
+
+Opção 2: Criar um programa em C, com interface gráfica, para que com auxílio de uma grelha o utilizador
+possa desenhar a forma geométrica que quer e esta seja enviada via comunicação série para o pic32
+
+Optamos pelo desenvolvimento do programa em C, e iniciamos o seu desenvolvimento. Implementamos a
+interface gráfica recorrendo à biblioteca Dear ImGui, o que nos facilitou imenso o trabalho, contudo
+ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o mapeamento dos pontos
+selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação
+série.
+
+** Dia 3 de trabalho autónomo
+Adicionamos a possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame.
+
+O tempo de cada frame pode ser escolhido entre 33.333ms, ou seja, aproximadamente 34ms, e 10000ms (10s).
+Adicionamos ainda a possibilidade
+* Detalhes técnicos
+* Apêndices                                                                                    :ignore_nested:
+#+BEGIN_EXPORT latex
+\appendix
+\section*{Apêndices}
+\addcontentsline{toc}{section}{Apêndices}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+#+END_EXPORT
+** Criação do /array/ com os valores sinusoidais
+O próximo excerto de código gera 100 valores da função $2048 + 2047 \sin t$, com $t \in [0, 2\pi[$, e imprime
+um /array/ em linguagem C do tipo =uint16_t[]= com esses valores.
+#+BEGIN_SRC matlab :results output :exports both :eval no-export
 t = linspace(0, 2*pi, 101);
 t = t(1:end-1);
 
@@ -43,9 +152,9 @@ output =
      };"
 #+end_example
 
-Usámos o mesmo processo para criar os valores para uma sinusoidal mais pequena, com a fórmula
+Usámos o mesmo processo para gerar os valores para uma sinusoidal mais pequena, com a fórmula
 $2048 + 1024 \sin t$.
-#+BEGIN_SRC matlab :results output :exports none
+#+BEGIN_SRC matlab :results output :exports none :eval no-export
 t = linspace(0, 2*pi, 101);
 t = t(1:end-1);
 
@@ -76,52 +185,11 @@ output =
      };"
 #+end_example
 
-* Diário de bordo
-** Primeira aula
-A primeira tarefa foi ler cuidadosa a datasheet do MCP4728, assim como alguns pormenores sobre o funcionamento do pic32, mais especificamente relativamente à comunicação série e i2c.
-Efetuamos a montagem cuidadosa do circuito pedido, assim como o seu desenho a computador recorrendo ao programa fritzing. A montagem foi aprovada pelo professor, tendo sido possível nessa mesma aula obter o endereço i2c do MCP4728.
-
-** Segunda aula
-Neste dia focamo-nos na comunicação i2c, mais concretamente no envio analógico de um sinal e posterior leitura utilizando o multímetro. Infelizmente passamos a maior parte da aula sem obter grande sucesso devido ao facto que o multímetro se encontrava a efectuar medições erradas. Chegando a casa, extamente com a mesma montagem, verificamos o correto funcionamento do circuito.
-
-#+NAME:   fig:Wiring
-#+CAPTION: Representação das ligações elétricas
-file:Resources/pictures/breadboard_setup.png
-
-** Dia 1 de trabalho autónomo
-O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a sua medição. Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se verificava. Acabamos por utilizar uma frequência de 1Mhz, alterando o valor das resistências de pull-up para um valor adequado - 4.7kOhms, valor entre 1 e 10Mhz como detalhado na datasheet para esta frequência de relógio. A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de transferência máxima suportada por esta MCU.
-
-Frequência i2c = 1Mhz
-Frequência i2c efetivamente medida = 1/(1.1us) Hz = 910kHz
-Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
-Pausas encontradas:
-- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
-- p2, entre bytes+ACK (5 pausas): 2.66us
-- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
-- p4, entre o STOP e o posterior START do próximo envio: 8.5us
-Assim, desprezando o tempo do START e STOP, o cáculo do periodo é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções.)
-
-#+NAME:   fig:Timings
-#+CAPTION: Diagrama ilustrativo dos tempos de envio
-file:Resources/pictures/timings_diagram.png
-
-Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos.
-
-** Dia 2 de trabalho autónomo
-Começamos por verificar que tudo estava funcional e que poderíamos prosseguir para mais testes. Visto que tudo estava OK decidimos tirar fotos das formas de onda visualizadas no osciloscópio, assim como do modo XY. Neste momento apenas testamos a possibilidade de enviar circunferências, de raios diferentes, com 5s de espaçamento entre elas.
-
-Como próximo passo decidimos começar por fazer uma letra, ainda manualmente. Desenhamos no software Inkscape um C, num documento com 4096 pontos de comprimento e largura, e amostramos 20 pontos, definindo as suas coordenadas X e Y. O teste foi um sucesso.
-
-Desenhar as formas manualmente, ie, papel e lápis, não é opção visto que seria extremamente trabalhoso, pelo que ponderamos duas opções:
-Opção 1
-- Desenhar numa grelha no Excel a forma que queremos
-- Exportar para CSV
-- Implementar um parser CSV -> C
-Opção 2: Criar um programa em C, com interface gráfica, para que com auxílio de uma grelha o utilizador possa desenhar a forma geométrica que quer e esta seja enviada via comunicação série para o pic32
-
-Optamos pelo desenvolvimento do programa em C, e iniciamos o seu desenvolvimento. Implementamos a interface gráfica recorrendo à biblioteca Dear ImGui, o que nos facilitou imenso o trabalho, contudo ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o mapeamento dos pontos selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação série.
-
-** Dia 3 de trabalho autónomo
-
-Adicionamos a possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame. O tempo de cada frame pode ser escolhido entre 33.333ms, ou seja, aproximadamente 34ms, e 10000ms (10s).
-Adicionamos ainda a possibilidade
+** Acrónimos
+#+BEGIN_EXPORT latex
+\begin{acronym}
+  \acro{DAC}{Digital-to-Analog Converter}
+  \acro{I2C}[I\textsuperscript{2}C]{Inter-Integrated Circuit}
+  \acro{LSB}{bits menos significativos}
+\end{acronym}
+#+END_EXPORT

@@ -3,18 +3,18 @@
 *** Página da cadeira
 - [[https://paginas.fe.up.pt/~hsm/docencia/comp/spi-e-i2c/][SPI e I2C]]
 *** Gerador de sinais
-- [[https://hackaday.io/project/3213-zero-cpu-load-function-generator][Zero CPU load function generator (com DMA + DAC R2R...)]] ([[file:Resources/3rd%20party/zero_load_dma.cpp][código]])
+- [[https://hackaday.io/project/3213-zero-cpu-load-function-generator][Zero CPU load function generator (com DMA + DAC R2R...)]] ([[file:3rd%20party/zero_load_dma.cpp][código]])
 
 *** Desenho de formas no osciloscópio com o modo XY
-- [[https://web.archive.org/web/20111217001329/http://www.johngineer.com/blog/?p=648][Blog post da árvore de natal]] ([[file:Resources/3rd%20party/scope_tree.pde][código]])
+- [[https://web.archive.org/web/20111217001329/http://www.johngineer.com/blog/?p=648][Blog post da árvore de natal]] ([[file:3rd%20party/scope_tree.pde][código]])
 - [[https://www.youtube.com/watch?v=Dx9N91FnPdo][Vídeo do w2aew]]
 - [[https://www.youtube.com/watch?v=344oEu9vo7w][Vídeo do w2aew com forma em movimento e R2R]]
-- [[file:Resources/3rd%20party/DAC_scope_drawings.pdf][Guião que usa um DAC para desenhar no osciloscópio]] (usavam o MCP4902)
+- [[file:3rd%20party/DAC_scope_drawings.pdf][Guião que usa um DAC para desenhar no osciloscópio]] (usavam o MCP4902)
 
 ** Datasheets
-*** [[file:Resources/datasheets/MCP4728.pdf][MCP4728]]
+*** [[file:datasheets/MCP4728.pdf][MCP4728]]
 :PROPERTIES:
-:NOTER_DOCUMENT: Resources/datasheets/MCP4728.pdf
+:NOTER_DOCUMENT: datasheets/MCP4728.pdf
 :END:
 **** I^{2}C Serial Interface Communications
 :PROPERTIES:
@@ -27,17 +27,17 @@
 - Só se pode transferir quando o bus não estiver a ser usado
 - Durante a transferência, a data line tem de estar estável enquanto a clock line for HIGH.
   - Mudanças à data line enquanto a clock line for HIGH é interpretado como um START ou STOP
-*** [[file:Resources/datasheets/pic32.pdf][PIC32]]
-**** [[file:Resources/datasheets/pic32_DMA.pdf][DMA]]
+*** [[file:datasheets/pic32.pdf][PIC32]]
+**** [[file:datasheets/pic32_DMA.pdf][DMA]]
 :PROPERTIES:
-:NOTER_DOCUMENT: Resources/datasheets/pic32_DMA.pdf
+:NOTER_DOCUMENT: datasheets/pic32_DMA.pdf
 :END:
 Não devemos poder usar isto com I^{2}C, devido ao tipo de protocolo! De qualquer maneira, [[https://tahmidmc.blogspot.com/2014/05/simple-pic32-dma-example.html][está aqui um
 exemplo de código para referência]].
 
-**** [[file:Resources/datasheets/pic32_I2C.pdf][I2C]]
+**** [[file:datasheets/pic32_I2C.pdf][I2C]]
 :PROPERTIES:
-:NOTER_DOCUMENT: Resources/datasheets/pic32_I2C.pdf
+:NOTER_DOCUMENT: datasheets/pic32_I2C.pdf
 :END:
 ***** I^{2}C Baud Rate Generator
 :PROPERTIES:
