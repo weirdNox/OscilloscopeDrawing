@@ -44,13 +44,9 @@ Implementação do General Read Address.
 
 ** [2018-12-21 Fri] Segunda aula prática laboratorial
 Neste dia, focamo-nos em tentar enviar um comando \ac{I2C} para definir uma tensão analógica numa das 4
-saídas do MCP4728.
+saídas do MCP4728. Infelizmente, passámos a maior parte da aula sem obter grande sucesso, visto que não conseguimos ler os valores corretamente.
 
-Infelizmente, passámos a maior parte da aula sem obter grande sucesso. Pensamos que o multímetro se
-encontrava a efectuar medições erradas, porque, chegando a casa, e sem nenhuma modificação quer a nível
-de montagem, quer a nível de código, verificámos que estava a funcionar o corretamente.
-
-Conseguimos ainda variar a tensão entre 2 pontos pré-definidos.
+Chegando a casa, e sem nenhuma alteração quer a nível de montagem, quer a nível de código, verificámos que estava a funcionar o corretamente, pelo que consideramos que o multímetro de bancada no laboratório não se encontrava a funcionar corretamente. Após o correto funcionamento, experimentamos variar a tensão entre 2 pontos pré-definidos, e o teste foi um sucesso.
 
 ** [2018-12-22 Sat] Temporizações e início de testes modo XY
 O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a
@@ -134,6 +130,19 @@ Para questões de código aproximamos este valor a 100us, dando assim uma margem
 ** Protocolo de comunicação
 
 * Conclusão
+
+Este trabalho levou ao aprofundamento do nosso conhecimento em vários domínios, nomeadamente:
+- Familizarização com a ferramente git, com recurso ao Gitlab
+- Domínio da linguagem LaTeX
+- Familiarização com a leitura de /datasheets/
+- Aprofundamento do conhecimento do microcontrolador PIC32
+- Aprofundamento do conhecimento do protocolo de comunicação \ac{I2C}
+- Integração de bibliotecas, mais concretamente, a biblioteca Dear ImGUI
+- Aprofundamento do conhecimento de transferência de dados, assim como os seus problemas: /framing/, /data loss/, etc 
+
+Inicialmente tivemos algumas pequenas complicações, como a falha na leitura dos valores durante toda a segunda aula prática laboratorial, mas rapidamente foram solucionadas. O problema mais grave foi sem dúvida alguma termos queimado a placa fornecida pela faculdade, devido a termos ligado um transformador que tinhamos connosco de 12V. Apesar da inscrição referente ao /jack DC/ dizer /15V MAX!/, o /jumper/ azul da placa responsável pela seleção do /Power Select/ encontrava-se no modo /Bypass/, o que, através da nossa pesquisa, indica que o PIC32 é diretamente alimentado pela fonte ligada ao /jack DC/. Como o PIC32 apenas suporta 6V diretamente, acreditamos que o chip queimou. Foi evidente que algo errado aconteceu visto que o /IC3/ da placa ficou "furado". No mesmo dia adquirimos outra placa igual.
+
+Consideramos que este trabalho, enquanto futuros engenheiros, representou um processo de aprendizagem significativo. Tivemos a oportunidade de abordar conceitos multidisciplinares, nomeadamente de unidades curriculares como Programação, Informação e Comunicação e, como não poderia deixar de ser, Computadores.
 
 * Apêndices                                                                                    :ignore_nested:
 #+BEGIN_EXPORT latex
