@@ -5,19 +5,14 @@
 #include <gl3w.c>
 #include <glfw/include/GLFW/glfw3.h>
 
+#include <fcntl.h>
 #include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
 
+#include <common.h>
+#include <protocol.h>
 #include "imgui_extensions.cpp"
-
-typedef  uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-
-typedef   int8_t  s8;
-typedef  int16_t s16;
-typedef  int32_t s32;
-
-#define arrayCount(Arr) ((sizeof(Arr))/(sizeof(*Arr)))
 
 enum {
     GridSize = 64,
@@ -62,6 +57,52 @@ static s32 max(s32 A, s32 B) {
     return A > B ? A : B;
 }
 
+static int serialConnect() {
+    int SerialTTY = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);
+
+    if(!isatty(SerialTTY)) {
+        goto connectionError;
+    }
+
+    termios Config;
+    if(tcgetattr(SerialTTY, &Config) < 0) {
+        goto connectionError;
+    }
+
+
+    Config.c_iflag &= ~(INPCK); // NOTE(nox): Disable input parity check
+    Config.c_iflag &= ~(IXON | IXOFF | IXANY); // NOTE(nox): Disable software flow control
+    Config.c_iflag &= ~(IGNBRK | BRKINT | ISTRIP | INLCR | IGNCR | ICRNL); // NOTE(nox): Disable any special handling of received bytes
+
+    Config.c_oflag  = ~(OPOST | ONLCR); // NOTE(nox): Disable output processing
+
+    Config.c_cflag &= ~PARENB;  // NOTE(nox): Disable parity generation
+    Config.c_cflag &= ~CSTOPB;  // NOTE(nox): Only 1 stop bit
+    Config.c_cflag &= ~CRTSCTS; // NOTE(nox): Disable RTS/CTS flow control
+    Config.c_cflag &= ~CSIZE;   // NOTE(nos): Set 8 bits as communication unit
+    Config.c_cflag |=  CS8;
+    Config.c_cflag |=  (CREAD | CLOCAL); // NOTE(nox): Enable receiver and ignore modem lines
+
+    Config.c_lflag &= ~(ICANON | ECHO | ISIG);
+
+    // NOTE(nox): Non blocking, return immediately what is available
+    Config.c_cc[VMIN]  = 0;
+    Config.c_cc[VTIME] = 0;
+
+    if(cfsetispeed(&Config, B115200) < 0 || cfsetospeed(&Config, B115200) < 0) {
+        goto connectionError;
+    }
+    if(tcsetattr(SerialTTY, TCSAFLUSH, &Config) < 0) {
+        goto connectionError;
+    }
+
+    return SerialTTY;
+
+  connectionError:
+    close(SerialTTY);
+    return -1;
+}
+
 int main(int, char**) {
     glfwSetErrorCallback(glfwErrorCallback);
     if(!glfwInit()) {
@@ -96,6 +137,7 @@ int main(int, char**) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    int SerialTTY = -1;
     s32 FrameCount = 1;
     s32 SelectedFrame = 1;
     frame Frames[MaxFrames] = {0};
@@ -108,6 +150,15 @@ int main(int, char**) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        // NOTE(nox): Unplug detection
+        if(SerialTTY >= 0) {
+            termios Conf;
+            if(tcgetattr(SerialTTY, &Conf)) {
+                close(SerialTTY);
+                SerialTTY = -1;
+            }
+        }
 
         frame *Frame = Frames + SelectedFrame - 1;
         frame *PrevFrame = SelectedFrame > 1 ? Frames + SelectedFrame - 2 : 0;
@@ -261,6 +312,23 @@ int main(int, char**) {
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Commands
         ImGui::Begin("Commands", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        if(SerialTTY < 0) {
+            if(ImGui::Button("Connect")) {
+                SerialTTY = serialConnect();
+            }
+        }
+        else {
+            if(ImGui::Button("Power on")) {
+                uart_buff Buff = {};
+                writePowerOn(&Buff);
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("Power off")) {
+                uart_buff Buff = {};
+                writePowerOff(&Buff);
+            }
+        }
+
         if(ImGui::Button("Export to C header")) {
             FILE *File = fopen("generated_header.h", "w");
             fprintf(File, "frame Frames[] = {");

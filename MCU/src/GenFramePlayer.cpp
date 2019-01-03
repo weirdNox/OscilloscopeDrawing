@@ -4,15 +4,9 @@
 #include "Wire.h"
 #include "timer.h"
 
-typedef  uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-
-typedef   int8_t  s8;
-typedef  int16_t s16;
-typedef  int32_t s32;
-
-#define arrayCount(Arr) ((sizeof(Arr))/(sizeof(*Arr)))
+#define assert(...)
+#include <common.h>
+#include <protocol.h>
 
 #define inputMsb(Val) ((Val >> 8) & 0x0F)
 #define inputLsb(Val) ((Val >> 0) & 0xFF)
