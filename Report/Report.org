@@ -76,10 +76,10 @@ Como próximo passo decidimos começar por fazer uma letra, ainda manualmente. D
 Inkscape um C, num documento com 4096 pontos de comprimento e largura, e amostramos 20 pontos, definindo
 as suas coordenadas X e Y. O teste foi um sucesso.
 
-Desenhar as formas manualmente, ie, papel e lápis, não é opção visto que seria extremamente trabalhoso,
+Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não é opção visto que seria extremamente trabalhoso,
 pelo que ponderamos duas opções:
 
-Opção 1
+Opção 1:
 - Desenhar numa grelha no Excel a forma que queremos
 - Exportar para CSV
 - Implementar um parser CSV -> C
@@ -87,11 +87,7 @@ Opção 1
 Opção 2: Criar um programa em C, com interface gráfica, para que com auxílio de uma grelha o utilizador
 possa desenhar a forma geométrica que quer e esta seja enviada via comunicação série para o pic32
 
-Optamos pelo desenvolvimento do programa em C, e iniciamos o seu desenvolvimento. Implementamos a
-interface gráfica recorrendo à biblioteca Dear ImGui, o que nos facilitou imenso o trabalho, contudo
-ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o mapeamento dos pontos
-selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação
-série.
+Optamos pelo desenvolvimento do programa em C. Implementamos a interface gráfica recorrendo à biblioteca Dear ImGui, o que nos facilitou imenso o trabalho, contudo ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o mapeamento dos pontos selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação série.
 
 ** [2018-12-28 Fri] Melhoramento aplicação de controlo
 Este dia foi dedicado ao melhoramento da interface gráfica. Adicionamos as seguintes funcionadidades:
@@ -112,6 +108,9 @@ Desta maneira, aquando da mudança de valor, ele desliga. Verificamos e obtivemo
 
 O passo seguinte foi definirmos o protocolo de comunicação, e, consequentemente, implementá-lo. Todo o protocolo é explicado a seguir, na secção de detalhes técnicos.
 
+Antes de implementar o protocolo, verificamos a /endianess/ do computador e do PIC32. Ambos reveleram ser /little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
+
+** [2019-1-7 Mon]
 
 
 * Detalhes técnicos
