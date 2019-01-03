@@ -12,7 +12,7 @@
 
 * Introdução
 Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
-do osciloscópio (ou XYZ nos analógicos).
+do osciloscópio (ou XYZ nos analógicos). Colocamos como primeira opção o MCP4728 visto que se tratava de um \ac{DAC} mais rápido (menor tempo de asssentamento) do que o outro proposto nos trabalhos, da /Texas Instruments/, apesar de termos menor resolução: 12 bits, ao invés dos 16bits do outro.
 
 Este relatório está dividido em 2 secções principais:
 - Diário de bordo :: Nesta secção apresentamos o trabalho desenvolvido e os problemas encontrados em cada
@@ -20,7 +20,7 @@ Este relatório está dividido em 2 secções principais:
 - Detalhes técnicos :: Nesta secção são apresentados todos os detalhes técnicos do nosso projeto
 
 * Diário de bordo
-** [2018-12-14 Fri] Primeira aula PL
+** [2018-12-14 Fri] Primeira aula prática laboratorial
 Foi nesta aula que foram anunciados os projetos que tinham sido atribuídos a cada equipa, ficando a nossa
 equipa com o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]]. Assim que soubemos qual era o nosso, começámos a ler cuidadosamente a /datasheet/
 correspondente. Também aproveitámos para rever o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o sistema de comunicação
@@ -42,7 +42,7 @@ numa EEPROM).
 ** TODO Trabalho em casa
 Implementação do General Read Address.
 
-** [2018-12-21 Fri] Segunda aula PL
+** [2018-12-21 Fri] Segunda aula prática laboratorial
 Neste dia, focamo-nos em tentar enviar um comando \ac{I2C} para definir uma tensão analógica numa das 4
 saídas do MCP4728.
 
@@ -52,33 +52,21 @@ de montagem, quer a nível de código, verificámos que estava a funcionar o cor
 
 Conseguimos ainda variar a tensão entre 2 pontos pré-definidos.
 
-** Dia 1 de trabalho autónomo
+** [2018-12-22 Sat] Temporizações e início de testes modo XY
 O passo seguinte foi tentar enviar vários sinais consecutivos e, com recurso ao osciloscópio, efetuar a
 sua medição. Aquando do upload de um programa com delay, no ciclo for, de valor igual a 1ms, verificamos
 que o upload seguinte não era bem sucedido. Ainda não sabemos a causa concreta do problema. O problema
 foi encontrado com uma frequência de clock de 100kHz. Posteriormente usamos 400kHz e isso já não se
 verificava. Acabamos por utilizar uma frequência de 1Mhz, alterando o valor das resistências de pull-up
 para um valor adequado - 4.7kOhms, valor entre 1 e 10Mhz como detalhado na datasheet para esta frequência
-de relógio. A esta frequência de funcionamento designa-se Fast Speed Plus, e é a velocidade de
+de relógio. A esta frequência de funcionamento designa-se /Fast Speed Plus/, e é a velocidade de
 transferência máxima suportada por esta MCU.
 
-Frequência \ac{I2C} = 1Mhz
-Frequência \ac{I2C} efetivamente medida = 1/(1.1us) Hz = 910kHz
-Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
-Pausas encontradas:
-- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
-- p2, entre bytes+ACK (5 pausas): 2.66us
-- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
-- p4, entre o STOP e o posterior START do próximo envio: 8.5us
-Assim, desprezando o tempo do START e STOP, o cáculo do periodo é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções.)
+Posteriormente iniciamos as medições de diversos tempos, abordadas em detalhe na secção de detalhes técnicos.
 
-#+NAME:   fig:Timings
-#+CAPTION: Diagrama ilustrativo dos tempos de envio
-[[file:Pictures/timings_diagram.png]]
+Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos. Colocamos em anexo o script MATLAB para a geração dos pontos.
 
-Iniciamos a exploração do modo XY, mais concretamente tentando o envio de um ponto, seguido do envio de 2 pontos. Ambos os testes foram um sucesso. Prosseguimos assim para a tentativa do envio de uma circuferência, recorrendo à utilização da função seno, e cosseno: utilizamos a função seno desfazada 90º, ou seja, como a função seno estava definida através de 100 pontos (100 pontos definiam 2pi), para desfazarmos 90º (pi/2), desfazamos 25 pontos.
-
-** Dia 2 de trabalho autónomo
+** [2018-12-23 Sun] Testes extensivos modo XY e início da aplicação de controlo
 Começamos por verificar que tudo estava funcional e que poderíamos prosseguir para mais testes. Visto que
 tudo estava OK decidimos tirar fotos das formas de onda visualizadas no osciloscópio, assim como do modo
 XY. Neste momento apenas testamos a possibilidade de enviar circunferências, de raios diferentes, com 5s
@@ -105,12 +93,49 @@ ainda com funcionalidade reduzida: apenas é possível reproduzir uma frame, e o
 selecionados na grelha é exportado em C, e não comunicado diretamente ao pic32 recorrendo à comunicação
 série.
 
-** Dia 3 de trabalho autónomo
-Adicionamos a possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame.
+** [2018-12-28 Fri] Melhoramento aplicação de controlo
+Este dia foi dedicado ao melhoramento da interface gráfica. Adicionamos as seguintes funcionadidades:
+- Possibilidade de desenhar várias frames graficamente e de alterar o tempo de cada frame para valores arbitrários.
+- Possibilidade de visualizar a frame anterior, para mais fácil reprodução de uma /imagem animada/. Esta técnica é designada por /onion skin/. Os blocos da frame anterior aparecem a cor diferente, para melhor identificação.
+- Uma linha vermelha, que percorre todos os blocos, de maneira a que seja evidente saltos visualizados no osciloscópio, derivados de blocos não consecutivos. Esta funcionalidade é mais útil para osciloscópios analógicos.
+- Possibilidade de optimizar o caminho, através do algoritmo /nearest neighbour/. Esta optimização tem sempre de ser averiguada visualmente pelo utilizador, visto que pode até prejudicar o caminho percorrido. Destina-se somente à optimização de saltos.
 
-O tempo de cada frame pode ser escolhido entre 33.333ms, ou seja, aproximadamente 34ms, e 10000ms (10s).
-Adicionamos ainda a possibilidade
+A nível de hardware mudamos os cabos para uns de tamanho adaptado, para facilidade de transporte e redução de possíveis perdas. Verificamos que estes cabos não ficavam tão bem presos aos pinos fêmea do MCU, fazendo por vezes mau contacto. Voltamos ao /setup/ inicial.
+
+**  [2019-1-3 Thu] Implementação de modo Z e protocolo de comunicação
+Começamos por tentar implementar uma maneira de eliminar as linhas visualizadas entre blocos não consecutivos. Mais uma vez referimos que esta funcionalidade só é útil para osciloscópios analógicos.
+Medimos o tempo de assentamento da alteração de um valor lógico, e verificamos que o pior valor medido coincide com o valor máximo fornecido pela /datasheet/: 6.4us.
+Visto que o MCP é um \ac{DAC} de 12 bits, a nossa ideia é utilizar um bit extra (13º bit) que serve para confirmar, ou não, se o modo Z se encontra ativo (responsável pela visualização das linhas entre blocos).
+Associamos este bit extra ao pino 6, visto que se trata de uma saída digital, ou seja, tem um tempo de escrita bastante superior a uma saída analógica.
+Verificamos que estava a funcionar como implementamos, e confirmamos as nossas suspeitas: estamos a ligar o modo Z ao mesmo tempo que desligamos o LDAC, o que significa que estamos a ativá-lo antes da mudança do valor analógico ser tomada, o que significa que a linha que queriamos eliminar vai continuar a aparecer. Pretendemos ligar o modo Z somente depois do valor analógico já ter /assentado/. Assim, teremos de recorrer a um novo timer.
+Desta maneira, aquando da mudança de valor, ele desliga. Verificamos e obtivemos precisamente isso.
+
+O passo seguinte foi definirmos o protocolo de comunicação, e, consequentemente, implementá-lo. Todo o protocolo é explicado a seguir, na secção de detalhes técnicos.
+
+
+
 * Detalhes técnicos
+** Temporização
+#+NAME:   fig:Timings
+#+CAPTION: Diagrama ilustrativo dos tempos de envio
+[[file:Pictures/timings_diagram.png]]
+
+Frequência \ac{I2C}, /Fast Mode Plus/ = 1Mhz
+Frequência \ac{I2C} efetivamente medida = 1/(1.1us) Hz = 910kHz
+Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
+Pausas encontradas:
+- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
+- p2, entre bytes+ACK (5 pausas): 2.66us
+- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
+- p4, entre o STOP e o posterior START do próximo envio: 8.5us
+Assim, desprezando o tempo do START e STOP, o cáculo do período é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us. A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. 
+Para questões de código aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer que estamos a correr várias funções).
+
+** Aplicação de controlo
+** Protocolo de comunicação
+
+* Conclusão
+
 * Apêndices                                                                                    :ignore_nested:
 #+BEGIN_EXPORT latex
 \appendix
