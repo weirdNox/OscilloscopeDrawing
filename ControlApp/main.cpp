@@ -273,9 +273,10 @@ int main(int, char**) {
                         fprintf(File, "\n           ");
                     }
                     int ActiveIndex = Frame->Order[J];
+                    point *Point = Frame->Points + ActiveIndex;
                     int X = (4096*(ActiveIndex % GridSize)) / GridSize;
                     int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
-                    fprintf(File, " {%d, %d},", X, Y);
+                    fprintf(File, " {%d, %d},", X | (Point->DisablePathBefore ? 1<<12 : 0), Y);
                 }
                 fprintf(File, "\n        }\n    },");
             }

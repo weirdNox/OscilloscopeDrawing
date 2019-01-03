@@ -20,7 +20,9 @@ typedef  int32_t s32;
 typedef enum {
     DacAddr = 0x60,
     LDAC = 1<<9, // RD9
+    ZPin = 1<<2, // RD2
     MaxPointsPerFrame = 300,
+    DisableZBit = 1<<12,
 };
 
 typedef struct {
@@ -35,10 +37,18 @@ typedef struct {
 
 #include "Frames.h"
 
-Timer4 Timer = {};
+Timer2 ZTimer = {};
+Timer4 FrameTimer = {};
+
 bool ShouldUpdate = false;
 u32 SelectedFrame = 0;
 u32 FrameRepeatCount = 0;
+
+static void __attribute__((interrupt)) enableZ() {
+    LATDSET = ZPin;
+    ZTimer.stop();
+    clearIntFlag(_TIMER_2_IRQ);
+}
 
 static void __attribute__((interrupt)) setUpdateFlag() {
     ShouldUpdate = true;
@@ -49,8 +59,8 @@ void setup() {
     Serial.begin(115200);
     Serial.println("Setup...");
 
-    TRISDCLR = LDAC;
-    LATDSET  = LDAC;
+    TRISDCLR = LDAC | ZPin;
+    LATDSET  = LDAC | ZPin;
 
     Wire.begin();
     u32 Clock = Wire.setClock(1000000);
@@ -74,15 +84,21 @@ void setup() {
     delay(50);
 
     // NOTE(nox): 30 FPS
-    Timer.setFrequency(30);
-    Timer.attachInterrupt(setUpdateFlag);
-    Timer.start();
+    FrameTimer.setFrequency(30);
+    FrameTimer.attachInterrupt(setUpdateFlag);
+    FrameTimer.start();
+
+    // NOTE(nox): This prevents the transitions from being visible in the XYZ mode, and needs to wait at
+    // least the settling time, 6.5us. Giving it some margin, we chose 10us of period.
+    ZTimer.setFrequency(100000);
+    ZTimer.attachInterrupt(enableZ);
 
     Serial.println("Setup done.");
 }
 
 // NOTE(nox): X and Y are in the range [0, 4096[
 static void setCoordinates(u16 X, u16 Y) {
+    LATDCLR = (X & DisableZBit) ? ZPin : 0;
     LATDSET = LDAC;
 
     // NOTE(nox): Multi-Write command - 5.6.2
@@ -93,6 +109,7 @@ static void setCoordinates(u16 X, u16 Y) {
     Wire.endTransmission();
 
     LATDCLR = LDAC;
+    ZTimer.start();
 }
 
 void loop() {
