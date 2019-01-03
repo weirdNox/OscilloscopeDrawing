@@ -321,6 +321,10 @@ int main(int, char**) {
             if(ImGui::Button("Power on")) {
                 uart_buff Buff = {};
                 writePowerOn(&Buff);
+
+                uart_buff Dest = {};
+                stuffBytes(&Buff, &Dest);
+                Dest = {};
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {

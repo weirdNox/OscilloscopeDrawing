@@ -39,4 +39,29 @@ static void writePowerOff(uart_buff *Buff) {
     writeHeader(Buff, Command_Off, 0);
 }
 
+static void stuffBytes(uart_buff *Orig, uart_buff *Dest) {
+    Dest->Index = 0;
+
+    u8 Code = 1;
+    u8 *CodeLocation = Dest->Data + Dest->Index++;
+	for(u8 Read = 0; Read < Orig->Index; ++Read) {
+		if(Code != 0xFF) {
+			u8 Char = Orig->Data[Read];
+			if (Char != 0) {
+                assert(Dest->Index + 1 <= arrayCount(Dest->Data));
+				Dest->Data[Dest->Index++] = Char;
+				++Code;
+				continue;
+			}
+		}
+
+        *CodeLocation = Code;
+
+        Code = 1;
+        CodeLocation = Dest->Data + Dest->Index++;
+	}
+
+    *CodeLocation = Code;
+}
+
 #endif // PROTOCOL_H
