@@ -39,23 +39,51 @@ bool ShouldUpdate = false;
 u32 SelectedFrame = 0;
 u32 FrameRepeatCount = 0;
 
-u8 RxBuffer[300] = {0};
-u32 RxAvailable = 0;
-u32 RxWriteIdx = 0;
-u32 RxReadIdx = 0;
-bool RxNewFrame = false;
+typedef struct {
+    u8 *Data;
+    u32 Size;
+    u32 Write;
+    u32 Read;
+    u32 ReadAvailable;
+} ring_buff;
 
-u8 FrameBuffer[7000] = {0};
-u32 FrameWriteIdx = 0;
-u32 FrameReadIdx = 0;
+u8 RxData[300];
+ring_buff Rx = {RxData, arrayCount(RxData)};
+u32 RxNewPackets = 0;
 
-static inline u32 incMod(u32 Val, u32 Mod) {
-    return ((Val + 1) % Mod);
+u8 PktData[7000];
+ring_buff Packet = {PktData, arrayCount(PktData)};
+bool PacketInvalid = false;
+
+static inline u32 incMod(u32 Val, u32 Mod, u32 Increment = 1) {
+    return ((Val + Increment) % Mod);
 }
 
-static inline void incRxRead() {
-    RxReadIdx = incMod(RxReadIdx, arrayCount(RxBuffer));
-    --RxAvailable;
+static void incReadUnsafe(ring_buff *Buff, u32 Increment = 1) {
+    Buff->Read = incMod(Buff->Read, Buff->Size, Increment);
+    --Buff->ReadAvailable;
+}
+
+static inline u8 ringReadUnsafe(ring_buff *Buff) {
+    u8 Byte = Buff->Data[Buff->Read];
+    incReadUnsafe(Buff);
+    return Byte;
+}
+
+static inline void ringResetRead(ring_buff *Buff) {
+    Buff->Read = Buff->Write;
+    Buff->ReadAvailable = 0;
+}
+
+static void ringWrite(ring_buff *Buff, u8 Byte) {
+    Buff->Data[Buff->Write] = Byte;
+    Buff->Write = incMod(Buff->Write, Buff->Size);
+    if(Buff->Write == Buff->Read) {
+        Buff->Read = incMod(Buff->Read, Buff->Size);
+    }
+    else {
+        ++Buff->ReadAvailable;
+    }
 }
 
 static void __USER_ISR enableZ() {
@@ -71,18 +99,10 @@ static void __USER_ISR setUpdateFlag() {
 
 static void __USER_ISR uartRx() {
     u8 Byte = U1RXREG;
-
     if(Byte == 0) {
-        RxNewFrame = true;
+        ++RxNewPackets;
     }
-
-    RxBuffer[RxWriteIdx] = Byte;
-    RxWriteIdx = incMod(RxWriteIdx, arrayCount(RxBuffer));
-    if(RxWriteIdx == RxReadIdx) {
-        RxReadIdx = incMod(RxReadIdx, arrayCount(RxBuffer));
-    } else {
-        ++RxAvailable;
-    }
+    ringWrite(&Rx, Byte);
     clearIntFlag(_UART1_RX_IRQ);
 }
 
@@ -101,6 +121,12 @@ void setup() {
 
     TRISDCLR = LDAC | ZPin;
     LATDSET  = LDAC | ZPin;
+
+    // ----------------------------------------------------------------------------------------------------
+    // TODO(nox): Remove this after testing with the actual MCP4728
+    TRISGCLR = 1<<6;
+    LATGCLR  = 1<<6;
+    // ----------------------------------------------------------------------------------------------------
 
     Wire.begin();
     u32 Clock = Wire.setClock(1000000);
@@ -149,48 +175,95 @@ static void setCoordinates(u16 X, u16 Y) {
     ZTimer.start();
 }
 
+static void processPacket() {
+    if(Packet.ReadAvailable >= 3) {
+        u8 FirstByte = Packet.Data[Packet.Read];
+        u8 MagicTest = (FirstByte & 0xF0);
+        u8 Command   = (FirstByte & 0x0F);
+        if(MagicTest == MagicNumber && Command < CommandCount) {
+            u16 Length = ((Packet.Data[Packet.Read+2] << 8) | (Packet.Data[Packet.Read+1] << 0));
+
+            if(Packet.ReadAvailable - 3 >= Length) {
+                incReadUnsafe(&Packet, 3);
+                switch(Command) {
+                    case Command_On: {
+                        LATGSET = 1<<6;
+                    } break;
+
+                    case Command_Off: {
+                        LATGCLR = 1<<6;
+                    } break;
+
+                    default: {} break;
+                }
+            }
+
+            // NOTE(nox): We are done with this packet
+            ringResetRead(&Packet);
+        }
+        else {
+            // NOTE(nox): Invalid packet start!
+            PacketInvalid = true;
+        }
+    }
+}
+
 static void unstuffBytes() {
+    if(PacketInvalid) {
+        // NOTE(nox): Until the next packet, all the groups in this one can be ignored!
+        return;
+    }
+
     bool DidUnstuff = false;
     u8 Code = 0xFF, Copy = 0;
 
-    if(RxAvailable) {
-        for(; RxBuffer[RxReadIdx]; --Copy) {
-            if(Copy) {
-                FrameBuffer[FrameWriteIdx] = RxBuffer[RxReadIdx];
-                FrameWriteIdx = incMod(FrameWriteIdx, arrayCount(FrameBuffer));
-                incRxRead();
+    for(; Rx.ReadAvailable && Rx.Data[Rx.Read]; --Copy) {
+        if(Copy) {
+            ringWrite(&Packet, Rx.Data[Rx.Read]);
+            incReadUnsafe(&Rx);
+        }
+        else {
+            if(Code != 0xFF) {
+                ringWrite(&Packet, 0);
             }
-            else {
-                if(Code != 0xFF) {
-                    FrameBuffer[FrameWriteIdx] = 0;
-                    FrameWriteIdx = incMod(FrameWriteIdx, arrayCount(FrameBuffer));
-                }
 
-                Copy = Code = RxBuffer[RxReadIdx];
-                if(Copy-1 > RxAvailable-1) {
-                    break;
-                }
-                incRxRead();
-                DidUnstuff = true;
+            Copy = Code = Rx.Data[Rx.Read];
+            if(Copy-1 > Rx.ReadAvailable-1) {
+                break;
             }
+            incReadUnsafe(&Rx);
+            DidUnstuff = true;
         }
     }
 
-    if(DidUnstuff && Copy == 0) {
-        // TODO(nox): Try to process new things
+    if(Copy == 0) {
+        // NOTE(nox): With classical COBS, we can ignore the zero of the last group of an encoded
+        // message, because it is the "ghost zero" that is added to the end of the message before
+        // encoding. We could wait for a message to arrive completely, which is marked by the delimiter,
+        // and ignore the last zero.
+        //
+        // This way, with the delimiter at the start, we can't assume that we have the whole message yet
+        // (we can't know!), so we need to add all zeros of each decoded group even if the group is the
+        // last we have at the moment, because we may still be in the middle of a transmission and not at
+        // the end of the message.
+        //
+        // On the other hand, if a message is truncated and we start to transmit another, we will know
+        // immediately because the delimiter is at the beginning of the packets.
+        if(Code != 0xFF) {
+            ringWrite(&Packet, 0);
+        }
+
+        if(DidUnstuff) {
+            processPacket();
+        }
     }
 }
 
 static void nextFrame() {
-    while(RxBuffer[RxReadIdx] != 0 && RxReadIdx != RxWriteIdx) {
-        incRxRead();
-    }
-
-    if(RxBuffer[RxReadIdx] == 0 && RxReadIdx != RxWriteIdx) {
-        incRxRead();
-    }
-
-    FrameReadIdx = FrameWriteIdx;
+    while(Rx.ReadAvailable && ringReadUnsafe(&Rx)) {}
+    ringResetRead(&Packet);
+    PacketInvalid = false;
+    --RxNewPackets;
 }
 
 void loop() {
@@ -200,6 +273,8 @@ void loop() {
             point *P = Frame->Points + I;
             setCoordinates(P->X, P->Y);
         }
+        // TODO(nox): setCoordinates(0, 0)? Para tirar do sítio final
+        // Ou então apagar o Z?
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
             FrameRepeatCount = 0;
@@ -208,8 +283,8 @@ void loop() {
         ShouldUpdate = false;
     }
 
-    if(RxNewFrame) {
-        unstuffBytes();
+    unstuffBytes();
+    if(RxNewPackets) {
         nextFrame();
         unstuffBytes();
     }

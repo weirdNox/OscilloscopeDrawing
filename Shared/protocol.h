@@ -1,20 +1,23 @@
 #if !defined(PROTOCOL_H)
 #define PROTOCOL_H
 
+#if !(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#error "Implemented only for little endianness!"
+#endif
+
 enum {
     BaudRate = 115200,
-
+    MagicNumber = 0xA0,
 };
 
 typedef enum {
     Command_On,
     Command_Off,
-    Command_Set,
+    //Command_Set,
     CommandCount
 } command;
 
 typedef struct {
-    enum {MagicNumber = 0xA0};
     u8 Data[1<<13];
     u32 Index;
 } uart_buff;
@@ -32,7 +35,7 @@ static void writeU16(uart_buff *Buff, u16 Value) {
 }
 
 static void writeHeader(uart_buff *Buff, command Command, u16 PayloadLength) {
-    writeU8(Buff, (uart_buff::MagicNumber | Command));
+    writeU8(Buff, (MagicNumber | Command));
     writeU16(Buff, PayloadLength);
 }
 

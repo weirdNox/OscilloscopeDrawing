@@ -92,6 +92,11 @@ static int serialConnect() {
     return -1;
 }
 
+static inline void serialDisconnect(int *SerialTTY) {
+    close(*SerialTTY);
+    *SerialTTY = -1;
+}
+
 static void sendBuffer(uart_buff *Buffer, int SerialTTY) {
     assert(SerialTTY >= 0);
 
@@ -320,17 +325,21 @@ int main(int, char**) {
             if(ImGui::Button("Power on")) {
                 uart_buff Buff = {};
                 writePowerOn(&Buff);
-
-                uart_buff Dest = {};
-                stuffBytes(&Buff, &Dest);
-                Dest = {};
+                sendBuffer(&Buff, SerialTTY);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
                 uart_buff Buff = {};
                 writePowerOff(&Buff);
+                sendBuffer(&Buff, SerialTTY);
+            }
+
+            if(ImGui::Button("Disconnect")) {
+                serialDisconnect(&SerialTTY);
             }
         }
+
+        ImGui::Separator();
 
         if(ImGui::Button("Export to C header")) {
             FILE *File = fopen("generated_header.h", "w");

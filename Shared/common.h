@@ -1,10 +1,6 @@
 #if !defined(TYPES_H)
 #define TYPES_H
 
-#if !(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#error "Implemented only for little endianness!"
-#endif
-
 #define arrayCount(Arr) ((sizeof(Arr))/(sizeof(*Arr)))
 
 typedef  uint8_t  u8;
