@@ -15,4 +15,14 @@ typedef   int8_t  s8;
 typedef  int16_t s16;
 typedef  int32_t s32;
 
+static s32 clamp(s32 Min, s32 Val, s32 Max) {
+    if(Val < Min) {
+        Val = Min;
+    } else if(Val > Max) {
+        Val = Max;
+    }
+
+    return Val;
+}
+
 #endif // TYPES_H

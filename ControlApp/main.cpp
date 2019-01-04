@@ -39,16 +39,6 @@ static void glfwErrorCallback(int Error, const char* Description) {
     fprintf(stderr, "GLFW Error %d: %s\n", Error, Description);
 }
 
-static s32 clamp(s32 Min, s32 Val, s32 Max) {
-    if(Val < Min) {
-        Val = Min;
-    } else if(Val > Max) {
-        Val = Max;
-    }
-
-    return Val;
-}
-
 static s32 min(s32 A, s32 B) {
     return A < B ? A : B;
 }
@@ -76,14 +66,13 @@ static int serialConnect() {
 
     Config.c_oflag  = ~(OPOST | ONLCR); // NOTE(nox): Disable output processing
 
-    Config.c_cflag &= ~PARENB;  // NOTE(nox): Disable parity generation
-    Config.c_cflag &= ~CSTOPB;  // NOTE(nox): Only 1 stop bit
-    Config.c_cflag &= ~CRTSCTS; // NOTE(nox): Disable RTS/CTS flow control
-    Config.c_cflag &= ~CSIZE;   // NOTE(nos): Set 8 bits as communication unit
-    Config.c_cflag |=  CS8;
+    Config.c_cflag &= ~(PARENB | CRTSCTS);  // NOTE(nox): Disable parity generation and RTS/CTS flow control
+    Config.c_cflag &= ~CSTOPB; // NOTE(nox): Only 1 stop bit
+    Config.c_cflag &= ~CSIZE;
+    Config.c_cflag |=  CS8; // NOTE(nos): Set 8 bits as communication unit
     Config.c_cflag |=  (CREAD | CLOCAL); // NOTE(nox): Enable receiver and ignore modem lines
 
-    Config.c_lflag &= ~(ICANON | ECHO | ISIG);
+    Config.c_lflag &= ~(ICANON | ECHO | ISIG); // NOTE(nox): Disable canonical mode, echos and don't generate signals
 
     // NOTE(nox): Non blocking, return immediately what is available
     Config.c_cc[VMIN]  = 0;
@@ -101,6 +90,16 @@ static int serialConnect() {
   connectionError:
     close(SerialTTY);
     return -1;
+}
+
+static void sendBuffer(uart_buff *Buffer, int SerialTTY) {
+    assert(SerialTTY >= 0);
+
+    uart_buff Encoded = {};
+    stuffBytes(Buffer, &Encoded);
+    u8 Delimiter = 0;
+    write(SerialTTY, &Delimiter, 1);
+    write(SerialTTY, Encoded.Data, Encoded.Index);
 }
 
 int main(int, char**) {

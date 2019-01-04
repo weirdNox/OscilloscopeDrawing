@@ -1,6 +1,11 @@
 #if !defined(PROTOCOL_H)
 #define PROTOCOL_H
 
+enum {
+    BaudRate = 115200,
+
+};
+
 typedef enum {
     Command_On,
     Command_Off,

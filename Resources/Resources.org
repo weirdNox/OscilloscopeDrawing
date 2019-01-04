@@ -13,6 +13,7 @@
 
 *** Comunicação série
 - [[https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp][Linux Serial Ports]]
+- [[https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing][Consistent Overhead Byte Stuffing (Wikipedia)]]
 ** Datasheets
 *** [[file:datasheets/MCP4728.pdf][MCP4728]]
 :PROPERTIES:
@@ -30,13 +31,13 @@
 - Durante a transferência, a data line tem de estar estável enquanto a clock line for HIGH.
   - Mudanças à data line enquanto a clock line for HIGH é interpretado como um START ou STOP
 *** [[file:datasheets/pic32.pdf][PIC32]]
-**** [[file:datasheets/pic32_DMA.pdf][DMA]]
 :PROPERTIES:
-:NOTER_DOCUMENT: datasheets/pic32_DMA.pdf
+:NOTER_DOCUMENT: datasheets/pic32.pdf
 :END:
-Não devemos poder usar isto com I^{2}C, devido ao tipo de protocolo! De qualquer maneira, [[https://tahmidmc.blogspot.com/2014/05/simple-pic32-dma-example.html][está aqui um
-exemplo de código para referência]].
-
+**** [[file:datasheets/pic32_UART.pdf][UART]]
+:PROPERTIES:
+:NOTER_DOCUMENT: datasheets/pic32_UART.pdf
+:END:
 **** [[file:datasheets/pic32_I2C.pdf][I2C]]
 :PROPERTIES:
 :NOTER_DOCUMENT: datasheets/pic32_I2C.pdf
@@ -49,3 +50,13 @@ Temos as seguintes clock frequencies disponíveis:
 - 100 kHz
 - 400 kHz
 - 1 MHz - não é suportada pelo DAC, mas podemos testar
+**** [[file:datasheets/pic32_interrupts.pdf][Interrupts]]
+:PROPERTIES:
+:NOTER_DOCUMENT: datasheets/pic32_interrupts.pdf
+:END:
+**** [[file:datasheets/pic32_DMA.pdf][DMA]]
+:PROPERTIES:
+:NOTER_DOCUMENT: datasheets/pic32_DMA.pdf
+:END:
+Não devemos poder usar isto com I^{2}C, devido ao tipo de protocolo! De qualquer maneira, [[https://tahmidmc.blogspot.com/2014/05/simple-pic32-dma-example.html][está aqui um
+exemplo de código para referência]].
