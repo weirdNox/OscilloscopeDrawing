@@ -179,7 +179,8 @@ int main(int, char**) {
             point *Point = Frame->Points + I;
             Frame->Pos[I] = ImGui::GetCursorScreenPos();
             bool Hovered;
-            if(ImGui::GridSquare(Point->Active, (OnionSkinning && PrevFrame) ? PrevFrame->Points[I].Active : 0, &Hovered))
+            if(ImGui::GridSquare(Point->Active, (OnionSkinning && PrevFrame) ? PrevFrame->Points[I].Active : 0,
+                                 &Hovered))
             {
                 LastSelected = I;
                 if(!Point->Active && Frame->ActiveCount < MaxActive) {
