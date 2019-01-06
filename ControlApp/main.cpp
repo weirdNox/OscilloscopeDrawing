@@ -97,10 +97,10 @@ static inline void serialDisconnect(int *SerialTTY) {
     *SerialTTY = -1;
 }
 
-static void sendBuffer(uart_buff *Buffer, int SerialTTY) {
+static void sendBuffer(send_buff *Buffer, int SerialTTY) {
     assert(SerialTTY >= 0);
 
-    uart_buff Encoded = {};
+    send_buff Encoded = {};
     stuffBytes(Buffer, &Encoded);
     u8 Delimiter = 0;
     write(SerialTTY, &Delimiter, 1);
@@ -324,14 +324,25 @@ int main(int, char**) {
         }
         else {
             if(ImGui::Button("Power on")) {
-                uart_buff Buff = {};
+                send_buff Buff = {};
                 writePowerOn(&Buff);
                 sendBuffer(&Buff, SerialTTY);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
-                uart_buff Buff = {};
+                send_buff Buff = {};
                 writePowerOff(&Buff);
+                sendBuffer(&Buff, SerialTTY);
+            }
+            if(ImGui::Button("Malformed + Toggle")) {
+                send_buff Malformed = {};
+                for(u8 I = 0; I < 253; ++I) {
+                    writeU16(&Malformed, 0xAAAA);
+                }
+                sendBuffer(&Malformed, SerialTTY);
+
+                send_buff Buff = {};
+                writePowerToggle(&Buff);
                 sendBuffer(&Buff, SerialTTY);
             }
 
