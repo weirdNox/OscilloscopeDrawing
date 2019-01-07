@@ -246,7 +246,7 @@ void loop() {
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
             FrameRepeatCount = 0;
-            SelectedFrame = incMod(SelectedFrame, arrayCount(Frames));
+            SelectedFrame = (SelectedFrame + 1 == arrayCount(Frames)) ? 0 : SelectedFrame + 1;
         }
         ShouldUpdate = false;
     }

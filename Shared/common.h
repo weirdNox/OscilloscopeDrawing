@@ -21,8 +21,4 @@ static s32 clamp(s32 Min, s32 Val, s32 Max) {
     return Val;
 }
 
-static inline u32 incMod(u32 Val, u32 Mod, u32 Increment = 1) {
-    return ((Val + Increment) % Mod);
-}
-
 #endif // TYPES_H
