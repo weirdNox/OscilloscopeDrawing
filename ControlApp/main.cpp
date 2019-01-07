@@ -97,14 +97,14 @@ static inline void serialDisconnect(int *SerialTTY) {
     *SerialTTY = -1;
 }
 
-static void sendBuffer(send_buff *Buffer, int SerialTTY) {
+static void sendBuffer(buff *Buffer, int SerialTTY) {
     assert(SerialTTY >= 0);
 
-    send_buff Encoded = {};
+    buff Encoded = {};
     stuffBytes(Buffer, &Encoded);
     u8 Delimiter = 0;
     write(SerialTTY, &Delimiter, 1);
-    write(SerialTTY, Encoded.Data, Encoded.Index);
+    write(SerialTTY, Encoded.Data, Encoded.Write);
 }
 
 int main(int, char**) {
@@ -162,6 +162,13 @@ int main(int, char**) {
                 close(SerialTTY);
                 SerialTTY = -1;
             }
+        }
+
+        int N;
+        char Buff[200];
+        if(SerialTTY >= 0 && (N = read(SerialTTY, Buff, sizeof(Buff)))) {
+            printf("%.*s", N, Buff);
+            fflush(stdout);
         }
 
         frame *Frame = Frames + SelectedFrame - 1;
@@ -324,25 +331,32 @@ int main(int, char**) {
         }
         else {
             if(ImGui::Button("Power on")) {
-                send_buff Buff = {};
+                buff Buff = {};
                 writePowerOn(&Buff);
                 sendBuffer(&Buff, SerialTTY);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
-                send_buff Buff = {};
+                buff Buff = {};
                 writePowerOff(&Buff);
                 sendBuffer(&Buff, SerialTTY);
             }
-            if(ImGui::Button("Malformed + Toggle")) {
-                send_buff Malformed = {};
-                for(u8 I = 0; I < 253; ++I) {
-                    writeU16(&Malformed, 0xAAAA);
-                }
-                sendBuffer(&Malformed, SerialTTY);
-
-                send_buff Buff = {};
+            ImGui::SameLine();
+            if(ImGui::Button("Toggle")) {
+                buff Buff = {};
                 writePowerToggle(&Buff);
+                sendBuffer(&Buff, SerialTTY);
+            }
+
+            if(ImGui::Button("Garbage")) {
+                buff Buff = {};
+                for(u32 I = 0; I < 1000; ++I) {
+                    writeU8(&Buff, I);
+                }
+                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, SerialTTY);
                 sendBuffer(&Buff, SerialTTY);
             }
 
@@ -368,7 +382,7 @@ int main(int, char**) {
                     point *Point = Frame->Points + ActiveIndex;
                     int X = (4096*(ActiveIndex % GridSize)) / GridSize;
                     int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
-                    fprintf(File, " {%d, %d},", X | (Point->DisablePathBefore ? 1<<12 : 0), Y);
+                    fprintf(File, " {%d, %d},", X | (Point->DisablePathBefore ? ZDisableBit : 0), Y);
                 }
                 fprintf(File, "\n        }\n    },");
             }
