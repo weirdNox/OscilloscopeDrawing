@@ -14,14 +14,6 @@
 #include <protocol.h>
 #include "imgui_extensions.cpp"
 
-enum {
-    GridSize = 64,
-    MaxFrames = 10,
-    MaxActive = 300, // NOTE(nox): Limit to achieve 30 FPS
-    FPS = 30,
-    MinFrameTimeMs = (1000 + FPS - 1)/FPS
-};
-
 typedef struct {
     bool Active;
     bool DisablePathBefore;
@@ -141,6 +133,8 @@ int main(int, char**) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+
+    int CurrentAnim = 0;
     int SerialTTY = -1;
     s32 FrameCount = 1;
     s32 SelectedFrame = 1;
@@ -341,22 +335,13 @@ int main(int, char**) {
                 writePowerOff(&Buff);
                 sendBuffer(&Buff, SerialTTY);
             }
-            ImGui::SameLine();
-            if(ImGui::Button("Toggle")) {
-                buff Buff = {};
-                writePowerToggle(&Buff);
-                sendBuffer(&Buff, SerialTTY);
-            }
 
-            if(ImGui::Button("Garbage")) {
+            int OldAnim = CurrentAnim;
+            ImGui::RadioButton("Animation 1", &CurrentAnim, 0); ImGui::SameLine();
+            ImGui::RadioButton("Animation 2", &CurrentAnim, 1);
+            if(CurrentAnim != OldAnim) {
                 buff Buff = {};
-                for(u32 I = 0; I < 1000; ++I) {
-                    writeU8(&Buff, I);
-                }
-                sendBuffer(&Buff, SerialTTY);
-                sendBuffer(&Buff, SerialTTY);
-                sendBuffer(&Buff, SerialTTY);
-                sendBuffer(&Buff, SerialTTY);
+                writeSelectAnim(&Buff, CurrentAnim);
                 sendBuffer(&Buff, SerialTTY);
             }
 

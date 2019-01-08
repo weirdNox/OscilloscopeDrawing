@@ -1,8 +1,8 @@
-#if GenFramePlayer
+#if AnimPlayer
 
 #include <Arduino.h>
-#include "Wire.h"
-#include "timer.h"
+#include "external/Wire.h"
+#include "external/timer.h"
 
 #define assert(...)
 #include <common.h>
@@ -19,28 +19,30 @@ enum {
     FPB = 80000000,
 };
 
-typedef struct {
-    u16 X, Y;
-} point;
-
-typedef struct {
-    u32 RepeatCount;
-    u32 PointCount;
-    point Points[MaxPointsPerFrame];
-} frame;
-
-#include "Frames.h"
+#include "Animations.h"
 
 static Timer2 FrameTimer = {};
 static Timer4 ZTimer = {};
 
 static bool ShouldUpdate = false;
+static u32 SelectedAnimation = 0;
 static u32 SelectedFrame = 0;
 static u32 FrameRepeatCount = 0;
 
 static rx_buff Rx;
 static buff Pkt;
 static bool SkipPacket;
+
+static inline void selectAnim(int Anim) {
+    if(Anim) {
+        SelectedAnimation = 1;
+    }
+    else {
+        SelectedAnimation = 0;
+    }
+    SelectedFrame = 0;
+    FrameRepeatCount = 0;
+}
 
 static void nextFrame() {
     while(Rx.Read != Rx.Write && Rx.Data[Rx.Read]) {
@@ -122,8 +124,12 @@ static void decodeRx() {
                         LATGCLR = 1<<6;
                     } break;
 
-                    case Command_Toggle: {
-                        LATGINV = 1<<6;
+                    case Command_Select0: {
+                        selectAnim(0);
+                    } break;
+
+                    case Command_Select1: {
+                        selectAnim(1);
                     } break;
 
                     default: {} break;
@@ -237,7 +243,8 @@ void setup() {
 
 void loop() {
     if(ShouldUpdate) {
-        frame *Frame = Frames + SelectedFrame;
+        animation *Anim = Animations + SelectedAnimation;
+        frame *Frame = Anim->Frames + SelectedFrame;
         for(u32 I = 0; I < Frame->PointCount; ++I) {
             point *P = Frame->Points + I;
             setCoordinates(P->X, P->Y);
@@ -246,7 +253,7 @@ void loop() {
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
             FrameRepeatCount = 0;
-            SelectedFrame = (SelectedFrame + 1 == arrayCount(Frames)) ? 0 : SelectedFrame + 1;
+            SelectedFrame = (SelectedFrame + 1 == Anim->FrameCount) ? 0 : SelectedFrame + 1;
         }
         ShouldUpdate = false;
     }

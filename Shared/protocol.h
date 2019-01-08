@@ -11,13 +11,13 @@ enum {
     BaudRate = 115200,
     MagicNumber = 0xA0,
     MaxPacketSize = 1<<10,
-    ZDisableBit = 1<<12,
 };
 
 typedef enum : u8 {
     Command_On,
     Command_Off,
-    Command_Toggle,
+    Command_Select0,
+    Command_Select1,
     CommandCount
 } command;
 
@@ -91,8 +91,13 @@ static void writePowerOff(buff *Buff) {
     writeHeader(Buff, Command_Off, 0);
 }
 
-static void writePowerToggle(buff *Buff) {
-    writeHeader(Buff, Command_Toggle, 0);
+static void writeSelectAnim(buff *Buff, int Anim) {
+    if(Anim) {
+        writeHeader(Buff, Command_Select1, 0);
+    }
+    else {
+        writeHeader(Buff, Command_Select0, 0);
+    }
 }
 
 static void stuffBytes(buff *Orig, buff *Dest) {

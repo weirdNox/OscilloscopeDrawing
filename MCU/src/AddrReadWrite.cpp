@@ -1,8 +1,8 @@
 #if AddrReadWrite
 
 #include <Arduino.h>
-#include "Wire.h"
-#include "timer.h"
+#include "external/Wire.h"
+#include "external/timer.h"
 
 #define TBF (I2C1STAT & 1)
 

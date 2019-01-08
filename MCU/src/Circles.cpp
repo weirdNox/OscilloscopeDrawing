@@ -1,8 +1,8 @@
 #if Circles
 
 #include <Arduino.h>
-#include "Wire.h"
-#include "timer.h"
+#include "external/Wire.h"
+#include "external/timer.h"
 
 typedef  uint8_t  u8;
 typedef uint16_t u16;

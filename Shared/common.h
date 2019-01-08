@@ -21,4 +21,13 @@ static s32 clamp(s32 Min, s32 Val, s32 Max) {
     return Val;
 }
 
+enum {
+    GridSize = 64,
+    MaxFrames = 10,
+    MaxActive = 300, // NOTE(nox): Limit to achieve 30 FPS
+    FPS = 30,
+    MinFrameTimeMs = (1000 + FPS - 1)/FPS,
+    ZDisableBit = 1<<12,
+};
+
 #endif // TYPES_H
