@@ -14,6 +14,10 @@
 #include <protocol.h>
 #include "imgui_extensions.cpp"
 
+#define xCoord(Idx, GridSize) (Idx % GridSize)
+#define yCoord(Idx, GridSize) (GridSize - (Idx / GridSize) - 1)
+#define frameRepeatCount(FrameMs, Fps) ((FrameMs*Fps)/1000)
+
 typedef struct {
     bool Active;
     bool DisablePathBefore;
@@ -29,14 +33,6 @@ typedef struct {
 
 static void glfwErrorCallback(int Error, const char* Description) {
     fprintf(stderr, "GLFW Error %d: %s\n", Error, Description);
-}
-
-static s32 min(s32 A, s32 B) {
-    return A < B ? A : B;
-}
-
-static s32 max(s32 A, s32 B) {
-    return A > B ? A : B;
 }
 
 static int serialConnect() {
@@ -93,7 +89,7 @@ static void sendBuffer(buff *Buffer, int SerialTTY) {
     assert(SerialTTY >= 0);
 
     buff Encoded = {};
-    stuffBytes(Buffer, &Encoded);
+    finalizePacket(Buffer, &Encoded);
     u8 Delimiter = 0;
     write(SerialTTY, &Delimiter, 1);
     write(SerialTTY, Encoded.Data, Encoded.Write);
@@ -153,8 +149,7 @@ int main(int, char**) {
         if(SerialTTY >= 0) {
             termios Conf;
             if(tcgetattr(SerialTTY, &Conf)) {
-                close(SerialTTY);
-                SerialTTY = -1;
+                serialDisconnect(&SerialTTY);
             }
         }
 
@@ -345,6 +340,32 @@ int main(int, char**) {
                 sendBuffer(&Buff, SerialTTY);
             }
 
+            if(ImGui::Button("Upload animation")) {
+                for(u8 I = 0; I < FrameCount; ++I) {
+                    frame *Frame = Frames + I;
+                    buff Buff = {};
+                    writeHeader(&Buff, Command_UpdateFrame);
+                    writeU8(&Buff, I);
+                    writeU16(&Buff, frameRepeatCount(Frame->NumMilliseconds, FPS));
+                    writeU16(&Buff, Frame->ActiveCount);
+
+                    for(int J = 0; J < Frame->ActiveCount; ++J) {
+                        int ActiveIndex = Frame->Order[J];
+                        point *Point = Frame->Points + ActiveIndex;
+                        int X = xCoord(ActiveIndex, GridSize) | (Point->DisablePathBefore ? ZDisableBit : 0);
+                        int Y = yCoord(ActiveIndex, GridSize);
+                        writeU8(&Buff, X);
+                        writeU8(&Buff, Y);
+                    }
+
+                    sendBuffer(&Buff, SerialTTY);
+                }
+
+                buff Buff = {};
+                writeUpdateFrameCount(&Buff, FrameCount);
+                sendBuffer(&Buff, SerialTTY);
+            }
+
             if(ImGui::Button("Disconnect")) {
                 serialDisconnect(&SerialTTY);
             }
@@ -362,15 +383,16 @@ int main(int, char**) {
             ImGui::LogText(I1 "{ %d,\n" I2 "{", FrameCount);
             for(int I = 0; I < FrameCount; ++I) {
                 frame *Frame = Frames + I;
-                ImGui::LogText("\n" I3 "{\n" I4 "%d, %d, {", (Frame->NumMilliseconds*FPS)/1000, Frame->ActiveCount);
+                ImGui::LogText("\n" I3 "{\n" I4 "%d, %d, {", frameRepeatCount(Frame->NumMilliseconds, FPS),
+                               Frame->ActiveCount);
                 for(int J = 0; J < Frame->ActiveCount; ++J) {
                     if((J % 7) == 0) {
                         ImGui::LogText("\n" I5);
                     }
                     int ActiveIndex = Frame->Order[J];
                     point *Point = Frame->Points + ActiveIndex;
-                    int X = ActiveIndex % GridSize;
-                    int Y = GridSize - (ActiveIndex / GridSize) - 1;
+                    int X = xCoord(ActiveIndex, GridSize);
+                    int Y = yCoord(ActiveIndex, GridSize);
                     ImGui::LogText(" {%d, %d},", X | (Point->DisablePathBefore ? ZDisableBit : 0), Y);
                 }
                 ImGui::LogText("\n" I4 "}\n" I3 "},");

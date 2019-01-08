@@ -45,7 +45,7 @@ typedef struct {
     //   @ 115200 baud, it transmits 4150 bits = 518 bytes which possibly may be managed with 512 bytes
     //   of buffering.
     //
-    //  - Both Write and NewPacketCount need to be volatile because they are modified in the ISR
+    //  - Both Write and NewPacketCount need to be _volatile_ because they are modified in the ISR
     //
     //  TODO(nox): Check if 512 bytes is enough to hold the streaming data
 
@@ -56,13 +56,26 @@ typedef struct {
     enum { Mask = (sizeof(Data) - 1) };
 } rx_buff;
 
-static inline u8 readU8(buff *Buff, u32 Offset = 0) {
+static inline u8 readU8NoAdv(buff *Buff, u32 Offset = 0) {
     return (u8)(Buff->Data[Buff->Read+Offset]);
 }
 
-static inline u16 readU16(buff *Buff, u32 Offset = 0) {
+static inline u8 readU8(buff *Buff) {
+    u8 Result = (u8)(Buff->Data[Buff->Read]);
+    Buff->Read += sizeof(Result);
+    return Result;
+}
+
+static inline u16 readU16NoAdv(buff *Buff, u32 Offset = 0) {
     return (u16)((Buff->Data[Buff->Read+Offset+1] << 8) |
                  (Buff->Data[Buff->Read+Offset+0] << 0));
+}
+
+static inline u16 readU16(buff *Buff) {
+    u16 Result = (u16)((Buff->Data[Buff->Read+1] << 8) |
+                      (Buff->Data[Buff->Read+0] << 0));
+    Buff->Read += sizeof(Result);
+    return Result;
 }
 
 
@@ -80,30 +93,30 @@ static void writeU16(buff *Buff, u16 Value) {
     Buff->Write += sizeof(Value);
 }
 
-static void writeHeader(buff *Buff, command Command, u16 PayloadLength) {
+static void writeHeader(buff *Buff, command Command) {
     writeU8(Buff, (MagicNumber | Command));
-    writeU16(Buff, PayloadLength);
+    writeU16(Buff, 0); // NOTE(nox): Placeholder for length
 }
 
 static void writePowerOn(buff *Buff) {
-    writeHeader(Buff, Command_On, 0);
+    writeHeader(Buff, Command_On);
 }
 
 static void writePowerOff(buff *Buff) {
-    writeHeader(Buff, Command_Off, 0);
+    writeHeader(Buff, Command_Off);
 }
 
 static void writeSelectAnim(buff *Buff, int Anim) {
     if(Anim) {
-        writeHeader(Buff, Command_Select1, 0);
+        writeHeader(Buff, Command_Select1);
     }
     else {
-        writeHeader(Buff, Command_Select0, 0);
+        writeHeader(Buff, Command_Select0);
     }
 }
 
 static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
-    writeHeader(Buff, Command_UpdateFrameCount, 1);
+    writeHeader(Buff, Command_UpdateFrameCount);
     writeU8(Buff, NewFrameCount);
 }
 
@@ -130,6 +143,12 @@ static void stuffBytes(buff *Orig, buff *Dest) {
 	}
 
     *CodeLocation = Code;
+}
+
+static inline void finalizePacket(buff *Buff, buff *Dest) {
+    // NOTE(nox): Update packet length
+    *((u16 *)(Buff->Data + 1)) = Buff->Write-3;
+    stuffBytes(Buff, Dest);
 }
 
 #endif // PROTOCOL_H

@@ -119,12 +119,12 @@ static void decodeRx() {
         }
     }
 
-    if(DidUnstuff && Pkt.Write >= 3) {
-        u8 FirstByte = readU8(&Pkt);
+    if(DidUnstuff && Pkt.Write >= (1+2)) {
+        u8 FirstByte = readU8NoAdv(&Pkt);
         u8 MagicTest =             (FirstByte & 0xF0);
         command Command = (command)(FirstByte & 0x0F);
         if(MagicTest == MagicNumber) {
-            u16 Length = readU16(&Pkt, 1);
+            u16 Length = readU16NoAdv(&Pkt, 1);
             if(Pkt.Write - 3 >= Length) {
                 Pkt.Read += 3;
 
@@ -146,7 +146,32 @@ static void decodeRx() {
                     } break;
 
                     case Command_UpdateFrame: {
-                        // TODO(nox): Implement this
+                        enum { CmdHeaderSize = 1+2+2 };
+
+                        if(Length < CmdHeaderSize) {
+                            break;
+                        }
+
+                        u8 FrameIdx = readU8(&Pkt);
+                        u16 RepeatCount = readU16(&Pkt);
+                        u16 PointCount = readU16(&Pkt);
+
+                        if((Length-CmdHeaderSize < 2*PointCount ||
+                            FrameIdx > MaxFrames || PointCount > MaxPointsPerFrame)) {
+                            break;
+                        }
+
+                        frame *Frame = Animations[SelectedAnimation].Frames + FrameIdx;
+                        Frame->RepeatCount = RepeatCount;
+                        Frame->PointCount  = PointCount;
+                        for(u16 I = 0; I < PointCount; ++I) {
+                            point *Point = Frame->Points + I;
+                            Point->X = readU8(&Pkt);
+                            Point->Y = readU8(&Pkt);
+                        }
+
+                        SelectedFrame = 0;
+                        FrameRepeatCount = 0;
                     } break;
 
                     case Command_UpdateFrameCount: {

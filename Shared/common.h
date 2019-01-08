@@ -21,6 +21,16 @@ static inline u8 clamp(u8 Min, u8 Val, u8 Max) {
     return Val;
 }
 
+#ifndef _ARDUINO_H
+static inline s32 min(s32 A, s32 B) {
+    return A < B ? A : B;
+}
+
+static inline s32 max(s32 A, s32 B) {
+    return A > B ? A : B;
+}
+#endif
+
 static inline s32 clamp(s32 Min, s32 Val, s32 Max) {
     if(Val < Min) {
         Val = Min;
