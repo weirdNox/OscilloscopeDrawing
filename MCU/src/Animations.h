@@ -1,5 +1,5 @@
 typedef struct {
-    u16 X, Y;
+    u8 X, Y;
 } point;
 
 typedef struct {
@@ -13,31 +13,7 @@ typedef struct {
     frame Frames[MaxFrames];
 } animation;
 
+// NOTE(nox): For the data, AnimationData.h needs to define:
+// static animation Animations[AnimCount] = {...};
 enum { AnimCount = 2 };
-static animation Animations[AnimCount] = {
-    {
-        2,
-        {
-            {
-                60, 1, {
-                    {128, 128},
-                }
-            },
-            {
-                60, 1, {
-                    {4032, 4032},
-                }
-            }
-        }
-    },
-    {
-        1,
-        {
-            {
-                60, 1, {
-                    {2000, 2000},
-                }
-            }
-        }
-    }
-};
+#include "AnimationData.h"

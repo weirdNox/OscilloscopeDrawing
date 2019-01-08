@@ -352,27 +352,31 @@ int main(int, char**) {
 
         ImGui::Separator();
 
-        if(ImGui::Button("Export to C header")) {
-            FILE *File = fopen("generated_header.h", "w");
-            fprintf(File, "frame Frames[] = {");
+        if(ImGui::Button("Copy C array to clipboard!")) {
+#define I1 "    "
+#define I2 "      "
+#define I3 "          "
+#define I4 "              "
+#define I5 "                 "
+            ImGui::LogToClipboard();
+            ImGui::LogText(I1 "{ %d,\n" I2 "{", FrameCount);
             for(int I = 0; I < FrameCount; ++I) {
                 frame *Frame = Frames + I;
-                fprintf(File, "\n    {\n        %d, %d, {", (Frame->NumMilliseconds*FPS)/1000,
-                        Frame->ActiveCount);
+                ImGui::LogText("\n" I3 "{\n" I4 "%d, %d, {", (Frame->NumMilliseconds*FPS)/1000, Frame->ActiveCount);
                 for(int J = 0; J < Frame->ActiveCount; ++J) {
                     if((J % 7) == 0) {
-                        fprintf(File, "\n           ");
+                        ImGui::LogText("\n" I5);
                     }
                     int ActiveIndex = Frame->Order[J];
                     point *Point = Frame->Points + ActiveIndex;
-                    int X = (4096*(ActiveIndex % GridSize)) / GridSize;
-                    int Y = (4096*(GridSize - (ActiveIndex / GridSize) - 1)) / GridSize;
-                    fprintf(File, " {%d, %d},", X | (Point->DisablePathBefore ? ZDisableBit : 0), Y);
+                    int X = ActiveIndex % GridSize;
+                    int Y = GridSize - (ActiveIndex / GridSize) - 1;
+                    ImGui::LogText(" {%d, %d},", X | (Point->DisablePathBefore ? ZDisableBit : 0), Y);
                 }
-                fprintf(File, "\n        }\n    },");
+                ImGui::LogText("\n" I4 "}\n" I3 "},");
             }
-            fprintf(File, "\n};");
-            fclose(File);
+            ImGui::LogText("\n" I2 "}\n" I1 "},");
+            ImGui::LogFinish();
         }
         ImGui::End();
 

@@ -8,9 +8,6 @@
 #include <common.h>
 #include <protocol.h>
 
-#define inputMsb(Val) ((Val >> 8) & 0x0F)
-#define inputLsb(Val) ((Val >> 0) & 0xFF)
-
 enum {
     DacAddr = 0x60,
     LDAC = 1<<9, // RD9
@@ -44,7 +41,23 @@ static inline void selectAnim(int Anim) {
     FrameRepeatCount = 0;
 }
 
-static void nextFrame() {
+// NOTE(nox): X and Y are in the range [0, 64[, except when X has the Z bit set.
+static void setCoordinates(u8 X, u8 Y) {
+    LATDCLR = (X & ZDisableBit) ? ZPin : 0;
+    LATDSET = LDAC;
+
+    // NOTE(nox): Multi-Write command - 5.6.2
+    u8 Data[] = {(0x40 | (0 << 1) | 1), (0x90 | inputMsb(X)), inputLsb(X),  // Output A
+                 (0x40 | (1 << 1) | 1), (0x90 | inputMsb(Y)), inputLsb(Y)}; // Output B
+    Wire.beginTransmission(DacAddr);
+    Wire.write(Data, arrayCount(Data));
+    Wire.endTransmission();
+
+    LATDCLR = LDAC;
+    ZTimer.start();
+}
+
+static void nextPacket() {
     while(Rx.Read != Rx.Write && Rx.Data[Rx.Read]) {
         Rx.Read = (Rx.Read + 1) & Rx.Mask;
     }
@@ -59,7 +72,7 @@ static void nextFrame() {
 
 static void decodeRx() {
     if(SkipPacket) {
-        nextFrame();
+        nextPacket();
         if(SkipPacket) {
             return;
         }
@@ -144,22 +157,6 @@ static void decodeRx() {
             SkipPacket = true;
         }
     }
-}
-
-// NOTE(nox): X and Y are in the range [0, 4096[
-static void setCoordinates(u16 X, u16 Y) {
-    LATDCLR = (X & ZDisableBit) ? ZPin : 0;
-    LATDSET = LDAC;
-
-    // NOTE(nox): Multi-Write command - 5.6.2
-    u8 Data[] = {(0x40 | (0 << 1) | 1), (0x90 | inputMsb(X)), inputLsb(X),  // Output A
-                 (0x40 | (1 << 1) | 1), (0x90 | inputMsb(Y)), inputLsb(Y)}; // Output B
-    Wire.beginTransmission(DacAddr);
-    Wire.write(Data, arrayCount(Data));
-    Wire.endTransmission();
-
-    LATDCLR = LDAC;
-    ZTimer.start();
 }
 
 static void __USER_ISR setUpdateFlag() {
@@ -253,14 +250,14 @@ void loop() {
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
             FrameRepeatCount = 0;
-            SelectedFrame = (SelectedFrame + 1 == Anim->FrameCount) ? 0 : SelectedFrame + 1;
+            SelectedFrame = (SelectedFrame + 1 >= Anim->FrameCount) ? 0 : SelectedFrame + 1;
         }
         ShouldUpdate = false;
     }
 
     decodeRx();
     while(Rx.NewPacketCount) {
-        nextFrame();
+        nextPacket();
         decodeRx();
     }
 }
