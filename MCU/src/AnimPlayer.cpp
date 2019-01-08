@@ -10,8 +10,9 @@
 
 enum {
     DacAddr = 0x60,
-    LDAC = 1<<9, // RD9
-    ZPin = 1<<2, // RD2
+    LDAC = 1<<9,    // RD9
+    ZPin = 1<<2,    // RD2
+    InfoLed = 1<<6, // RG2
     MaxPointsPerFrame = 300,
     FPB = 80000000,
 };
@@ -21,7 +22,7 @@ enum {
 static Timer2 FrameTimer = {};
 static Timer4 ZTimer = {};
 
-static bool ShouldUpdate = false;
+static volatile bool ShouldUpdate = false;
 static u32 SelectedAnimation = 0;
 static u32 SelectedFrame = 0;
 static u32 FrameRepeatCount = 0;
@@ -109,7 +110,7 @@ static void decodeRx() {
             DidUnstuff = true;
         }
         else if(Byte) {
-            Pkt.Data[Pkt.Write++] = Rx.Data[Rx.Read];
+            Pkt.Data[Pkt.Write++] = Byte;
             Rx.Read = (Rx.Read + 1) & Rx.Mask;
         }
         else {
@@ -130,11 +131,11 @@ static void decodeRx() {
 
                 switch(Command) {
                     case Command_On: {
-                        LATGSET = 1<<6;
+                        LATGSET = InfoLed;
                     } break;
 
                     case Command_Off: {
-                        LATGCLR = 1<<6;
+                        LATGCLR = InfoLed;
                     } break;
 
                     case Command_Select0: {
@@ -146,13 +147,7 @@ static void decodeRx() {
                     } break;
 
                     case Command_UpdateFrame: {
-
-                        // TODO FIXME(nox): Parece-me que estamos ou a dar buffer overflow ou a corromper
-                        // bytes de alguma maneira, porque estamos a usar a coordenada y final para o x
-                        // (quer dizer que perdemos 1 byte :'( )
-
                         enum { CmdHeaderSize = 1+2+2 };
-                        Serial.printf("CmdStart\n");
 
                         if(Length < CmdHeaderSize) {
                             break;
@@ -161,7 +156,6 @@ static void decodeRx() {
                         u8 FrameIdx = readU8(&Pkt);
                         u16 RepeatCount = readU16(&Pkt);
                         u16 PointCount = readU16(&Pkt);
-                        Serial.printf("%d %d %d\n", FrameIdx, RepeatCount, PointCount);
 
                         if((Length-CmdHeaderSize < 2*PointCount ||
                             FrameIdx > MaxFrames || PointCount > MaxPointsPerFrame)) {
@@ -179,8 +173,6 @@ static void decodeRx() {
 
                         SelectedFrame = 0;
                         FrameRepeatCount = 0;
-                        Serial.printf("Last is %d,%d\n",
-                                      Frame->Points[PointCount-1].X, Frame->Points[PointCount-1].Y);
                     } break;
 
                     case Command_UpdateFrameCount: {
@@ -224,7 +216,12 @@ static void __USER_ISR uartRx() {
         if(Byte == 0) {
             Rx.NewPacketCount++;
         }
-    } // NOTE(nox): In the case of a buffer overflow, the _new_ byte is dropped
+    }
+    else {
+        // NOTE(nox): In the case of a buffer overflow, the _new_ byte is dropped. The information LED
+        // will light up so we know if it ever happens.
+        LATGSET = InfoLed;
+    }
 
     clearIntFlag(_UART1_RX_IRQ);
 }
@@ -244,12 +241,8 @@ void setup() {
 
     TRISDCLR = LDAC | ZPin;
     LATDSET  = LDAC | ZPin;
-
-    // ----------------------------------------------------------------------------------------------------
-    // TODO(nox): Remove this after testing with the actual MCP4728
-    TRISGCLR = 1<<6;
-    LATGCLR  = 1<<6;
-    // ----------------------------------------------------------------------------------------------------
+    TRISGCLR = InfoLed;
+    LATGCLR  = InfoLed;
 
     Wire.begin();
     u32 Clock = Wire.setClock(1000000);

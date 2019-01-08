@@ -372,6 +372,48 @@ int main(int, char**) {
                 sendBuffer(&Buff, Serial.Tty);
             }
 
+            if(ImGui::Button("Upload test")) {
+                u8 FrameCount = 0;
+#define frameBuff(Name, Num)                                \
+                buff Name = {};                             \
+                writeHeader(&Name, Command_UpdateFrame);    \
+                writeU8(&Name,  Num);                       \
+                writeU16(&Name,  20);                       \
+                writeU16(&Name, 300);                       \
+                ++FrameCount;
+
+                frameBuff(Frame0, 0);
+                frameBuff(Frame1, 1);
+                frameBuff(Frame2, 2);
+                frameBuff(Frame3, 3);
+#undef frameBuff
+
+                for(int I = 0; I < 300; ++I) {
+                    u8 Val = I % 64; if(Val == 0) Val = 1;
+
+                    writeU8(&Frame0, Val);
+                    writeU8(&Frame0, Val);
+
+                    writeU8(&Frame1, Val);
+                    writeU8(&Frame1, 32);
+
+                    writeU8(&Frame2, Val);
+                    writeU8(&Frame2, 63-Val);
+
+                    writeU8(&Frame3, 32);
+                    writeU8(&Frame3, 63-Val);
+                }
+
+                sendBuffer(&Frame0, Serial.Tty);
+                sendBuffer(&Frame1, Serial.Tty);
+                sendBuffer(&Frame2, Serial.Tty);
+                sendBuffer(&Frame3, Serial.Tty);
+
+                buff FrameCountBuff = {};
+                writeUpdateFrameCount(&FrameCountBuff, FrameCount);
+                sendBuffer(&FrameCountBuff, Serial.Tty);
+            }
+
             if(ImGui::Button("Disconnect")) {
                 serialDisconnect(&Serial);
             }

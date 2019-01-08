@@ -46,19 +46,12 @@ typedef struct {
     //   of buffering.
     //
     //  - Both Write and NewPacketCount need to be _volatile_ because they are modified in the ISR
-    //
-    //  TODO(nox): Check if 512 bytes is enough to hold the streaming data
-
-    u8 Data[1<<9];
+    u8 Data[1<<10];
     u32 Read;
     volatile u32 Write;
     volatile u32 NewPacketCount;
     enum { Mask = (sizeof(Data) - 1) };
 } rx_buff;
-
-static inline u8 readU8NoAdv(buff *Buff, u32 Offset = 0) {
-    return (u8)(Buff->Data[Buff->Read+Offset]);
-}
 
 static inline u8 readU8(buff *Buff) {
     u8 Result = (u8)(Buff->Data[Buff->Read]);
@@ -66,16 +59,20 @@ static inline u8 readU8(buff *Buff) {
     return Result;
 }
 
+static inline u16 readU16(buff *Buff) {
+    u16 Result = (u16)((Buff->Data[Buff->Read+1] << 8) |
+                       (Buff->Data[Buff->Read+0] << 0));
+    Buff->Read += sizeof(Result);
+    return Result;
+}
+
+static inline u8 readU8NoAdv(buff *Buff, u32 Offset = 0) {
+    return (u8)(Buff->Data[Buff->Read+Offset]);
+}
+
 static inline u16 readU16NoAdv(buff *Buff, u32 Offset = 0) {
     return (u16)((Buff->Data[Buff->Read+Offset+1] << 8) |
                  (Buff->Data[Buff->Read+Offset+0] << 0));
-}
-
-static inline u16 readU16(buff *Buff) {
-    u16 Result = (u16)((Buff->Data[Buff->Read+1] << 8) |
-                      (Buff->Data[Buff->Read+0] << 0));
-    Buff->Read += sizeof(Result);
-    return Result;
 }
 
 
@@ -125,9 +122,9 @@ static void stuffBytes(buff *Orig, buff *Dest) {
 
     u8 Code = 1;
     u8 *CodeLocation = Dest->Data + Dest->Write++;
-	for(u32 Read = 0; Read < Orig->Write; ++Read) {
+	for(u32 Read = 0; Read < Orig->Write;) {
 		if(Code != 0xFF) {
-			u8 Char = Orig->Data[Read];
+			u8 Char = Orig->Data[Read++];
 			if (Char != 0) {
                 assert(Dest->Write + 1 <= arrayCount(Dest->Data));
 				Dest->Data[Dest->Write++] = Char;
