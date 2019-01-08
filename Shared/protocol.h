@@ -18,6 +18,8 @@ typedef enum : u8 {
     Command_Off,
     Command_Select0,
     Command_Select1,
+    Command_UpdateFrame,
+    Command_UpdateFrameCount,
     CommandCount
 } command;
 
@@ -60,7 +62,7 @@ static inline u8 readU8(buff *Buff, u32 Offset = 0) {
 
 static inline u16 readU16(buff *Buff, u32 Offset = 0) {
     return (u16)((Buff->Data[Buff->Read+Offset+1] << 8) |
-                 (Buff->Data[Buff->Read+Offset+0] << 8));
+                 (Buff->Data[Buff->Read+Offset+0] << 0));
 }
 
 
@@ -98,6 +100,11 @@ static void writeSelectAnim(buff *Buff, int Anim) {
     else {
         writeHeader(Buff, Command_Select0, 0);
     }
+}
+
+static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
+    writeHeader(Buff, Command_UpdateFrameCount, 1);
+    writeU8(Buff, NewFrameCount);
 }
 
 static void stuffBytes(buff *Orig, buff *Dest) {

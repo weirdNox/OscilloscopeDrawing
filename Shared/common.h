@@ -11,7 +11,17 @@ typedef   int8_t  s8;
 typedef  int16_t s16;
 typedef  int32_t s32;
 
-static s32 clamp(s32 Min, s32 Val, s32 Max) {
+static inline u8 clamp(u8 Min, u8 Val, u8 Max) {
+    if(Val < Min) {
+        Val = Min;
+    } else if(Val > Max) {
+        Val = Max;
+    }
+
+    return Val;
+}
+
+static inline s32 clamp(s32 Min, s32 Val, s32 Max) {
     if(Val < Min) {
         Val = Min;
     } else if(Val > Max) {

@@ -145,6 +145,16 @@ static void decodeRx() {
                         selectAnim(1);
                     } break;
 
+                    case Command_UpdateFrame: {
+                        // TODO(nox): Implement this
+                    } break;
+
+                    case Command_UpdateFrameCount: {
+                        u8 FrameCount = readU8(&Pkt);
+                        FrameCount = clamp(1, FrameCount, MaxFrames);
+                        Animations[SelectedAnimation].FrameCount = FrameCount;
+                    } break;
+
                     default: {} break;
                 }
 
