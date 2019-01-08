@@ -146,7 +146,13 @@ static void decodeRx() {
                     } break;
 
                     case Command_UpdateFrame: {
+
+                        // TODO FIXME(nox): Parece-me que estamos ou a dar buffer overflow ou a corromper
+                        // bytes de alguma maneira, porque estamos a usar a coordenada y final para o x
+                        // (quer dizer que perdemos 1 byte :'( )
+
                         enum { CmdHeaderSize = 1+2+2 };
+                        Serial.printf("CmdStart\n");
 
                         if(Length < CmdHeaderSize) {
                             break;
@@ -155,6 +161,7 @@ static void decodeRx() {
                         u8 FrameIdx = readU8(&Pkt);
                         u16 RepeatCount = readU16(&Pkt);
                         u16 PointCount = readU16(&Pkt);
+                        Serial.printf("%d %d %d\n", FrameIdx, RepeatCount, PointCount);
 
                         if((Length-CmdHeaderSize < 2*PointCount ||
                             FrameIdx > MaxFrames || PointCount > MaxPointsPerFrame)) {
@@ -172,6 +179,8 @@ static void decodeRx() {
 
                         SelectedFrame = 0;
                         FrameRepeatCount = 0;
+                        Serial.printf("Last is %d,%d\n",
+                                      Frame->Points[PointCount-1].X, Frame->Points[PointCount-1].Y);
                     } break;
 
                     case Command_UpdateFrameCount: {

@@ -31,19 +31,24 @@ typedef struct {
     s32 NumMilliseconds;
 } frame;
 
+typedef struct {
+    int Tty;
+    int SelectedAnimation;
+} serial_ctx;
+
 static void glfwErrorCallback(int Error, const char* Description) {
     fprintf(stderr, "GLFW Error %d: %s\n", Error, Description);
 }
 
 static int serialConnect() {
-    int SerialTTY = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);
+    int Tty = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NONBLOCK);
 
-    if(!isatty(SerialTTY)) {
+    if(!isatty(Tty)) {
         goto connectionError;
     }
 
     termios Config;
-    if(tcgetattr(SerialTTY, &Config) < 0) {
+    if(tcgetattr(Tty, &Config) < 0) {
         goto connectionError;
     }
 
@@ -69,20 +74,21 @@ static int serialConnect() {
     if(cfsetispeed(&Config, B115200) < 0 || cfsetospeed(&Config, B115200) < 0) {
         goto connectionError;
     }
-    if(tcsetattr(SerialTTY, TCSAFLUSH, &Config) < 0) {
+    if(tcsetattr(Tty, TCSAFLUSH, &Config) < 0) {
         goto connectionError;
     }
 
-    return SerialTTY;
+    return Tty;
 
   connectionError:
-    close(SerialTTY);
+    close(Tty);
     return -1;
 }
 
-static inline void serialDisconnect(int *SerialTTY) {
-    close(*SerialTTY);
-    *SerialTTY = -1;
+static inline void serialDisconnect(serial_ctx *Ctx) {
+    close(Ctx->Tty);
+    Ctx->Tty = -1;
+    Ctx->SelectedAnimation = 0;
 }
 
 static void sendBuffer(buff *Buffer, int SerialTTY) {
@@ -130,8 +136,8 @@ int main(int, char**) {
     ImGui_ImplOpenGL3_Init(glsl_version);
 
 
-    int CurrentAnim = 0;
-    int SerialTTY = -1;
+    serial_ctx Serial = {-1, 0};
+
     s32 FrameCount = 1;
     s32 SelectedFrame = 1;
     frame Frames[MaxFrames] = {0};
@@ -146,16 +152,16 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         // NOTE(nox): Unplug detection
-        if(SerialTTY >= 0) {
+        if(Serial.Tty >= 0) {
             termios Conf;
-            if(tcgetattr(SerialTTY, &Conf)) {
-                serialDisconnect(&SerialTTY);
+            if(tcgetattr(Serial.Tty, &Conf)) {
+                serialDisconnect(&Serial);
             }
         }
 
         int N;
         char Buff[200];
-        if(SerialTTY >= 0 && (N = read(SerialTTY, Buff, sizeof(Buff)))) {
+        if(Serial.Tty >= 0 && (N = read(Serial.Tty, Buff, sizeof(Buff)))) {
             printf("%.*s", N, Buff);
             fflush(stdout);
         }
@@ -313,31 +319,31 @@ int main(int, char**) {
         // ------------------------------------------------------------------------------------------
         // NOTE(nox): Commands
         ImGui::Begin("Commands", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
-        if(SerialTTY < 0) {
+        if(Serial.Tty < 0) {
             if(ImGui::Button("Connect")) {
-                SerialTTY = serialConnect();
+                Serial.Tty = serialConnect();
             }
         }
         else {
             if(ImGui::Button("Power on")) {
                 buff Buff = {};
                 writePowerOn(&Buff);
-                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, Serial.Tty);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
                 buff Buff = {};
                 writePowerOff(&Buff);
-                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, Serial.Tty);
             }
 
-            int OldAnim = CurrentAnim;
-            ImGui::RadioButton("Animation 1", &CurrentAnim, 0); ImGui::SameLine();
-            ImGui::RadioButton("Animation 2", &CurrentAnim, 1);
-            if(CurrentAnim != OldAnim) {
+            int OldAnim = Serial.SelectedAnimation;
+            ImGui::RadioButton("Animation 1", &Serial.SelectedAnimation, 0); ImGui::SameLine();
+            ImGui::RadioButton("Animation 2", &Serial.SelectedAnimation, 1);
+            if(Serial.SelectedAnimation != OldAnim) {
                 buff Buff = {};
-                writeSelectAnim(&Buff, CurrentAnim);
-                sendBuffer(&Buff, SerialTTY);
+                writeSelectAnim(&Buff, Serial.SelectedAnimation);
+                sendBuffer(&Buff, Serial.Tty);
             }
 
             if(ImGui::Button("Upload animation")) {
@@ -358,16 +364,16 @@ int main(int, char**) {
                         writeU8(&Buff, Y);
                     }
 
-                    sendBuffer(&Buff, SerialTTY);
+                    sendBuffer(&Buff, Serial.Tty);
                 }
 
                 buff Buff = {};
                 writeUpdateFrameCount(&Buff, FrameCount);
-                sendBuffer(&Buff, SerialTTY);
+                sendBuffer(&Buff, Serial.Tty);
             }
 
             if(ImGui::Button("Disconnect")) {
-                serialDisconnect(&SerialTTY);
+                serialDisconnect(&Serial);
             }
         }
 
