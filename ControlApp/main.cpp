@@ -18,6 +18,10 @@
 #define yCoord(Idx, GridSize) (GridSize - (Idx / GridSize) - 1)
 #define frameRepeatCount(FrameMs, Fps) ((FrameMs*Fps)/1000)
 
+enum {
+    DefaultFrameTimeMs = 1000,
+};
+
 typedef struct {
     bool Active;
     bool DisablePathBefore;
@@ -67,7 +71,7 @@ static int serialConnect() {
 
     Config.c_lflag &= ~(ICANON | ECHO | ISIG); // NOTE(nox): Disable canonical mode, echos and don't generate signals
 
-    // NOTE(nox): Non blocking, return immediately what is available
+    // NOTE(nox): Non blocking, return immediately what is available (ignored due to O_NONBLOCK)
     Config.c_cc[VMIN]  = 0;
     Config.c_cc[VTIME] = 0;
 
@@ -141,6 +145,9 @@ int main(int, char**) {
     s32 FrameCount = 1;
     s32 SelectedFrame = 1;
     frame Frames[MaxFrames] = {0};
+    for(int I = 0; I < MaxFrames; ++I) {
+        Frames[I].NumMilliseconds = DefaultFrameTimeMs;
+    }
     bool OnionSkinning = false;
     bool ShowPath = true;
     s32 LastSelected = -1;
@@ -214,7 +221,7 @@ int main(int, char**) {
 
 
         // ------------------------------------------------------------------------------------------
-        // NOTE(nox): General settings
+        // NOTE(nox): Animation settings
         ImGui::Begin("Animation settings", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::SliderInt("Frame count", &FrameCount, 1, MaxFrames);
         FrameCount = clamp(1, FrameCount, MaxFrames);
@@ -226,8 +233,21 @@ int main(int, char**) {
             LastSelected = -1;
         }
 
-        ImGui::Checkbox("Onion skinning", &OnionSkinning);
-        ImGui::Checkbox("Show path", &ShowPath);
+        if(ImGui::Button("Completely clear animation")) {
+            for(int I = 0; I < MaxFrames; ++I) {
+                frame *Frame = Frames + I;
+                Frame->ActiveCount = 0;
+                for(int I = 0; I < GridSize*GridSize; ++I) {
+                    point *Point = Frame->Points + I;
+                    Point->Active = false;
+                    Point->DisablePathBefore = false;
+                }
+                Frame->NumMilliseconds = DefaultFrameTimeMs;
+            }
+            FrameCount = 1;
+            SelectedFrame = 1;
+            LastSelected = -1;
+        }
         ImGui::End();
 
 
@@ -249,7 +269,7 @@ int main(int, char**) {
             }
             LastSelected = -1;
         }
-
+        ImGui::SameLine();
         if(ImGui::Button("\"Optimize\" path") && Frame->ActiveCount > 0) {
             u32 NumVisited = 0;
             bool Visited[GridSize*GridSize] = {0};
@@ -317,8 +337,8 @@ int main(int, char**) {
 
 
         // ------------------------------------------------------------------------------------------
-        // NOTE(nox): Commands
-        ImGui::Begin("Commands", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+        // NOTE(nox): Control
+        ImGui::Begin("Control", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
         if(Serial.Tty < 0) {
             if(ImGui::Button("Connect")) {
                 Serial.Tty = serialConnect();
@@ -448,6 +468,9 @@ int main(int, char**) {
             ImGui::LogText("\n" I2 "}\n" I1 "},");
             ImGui::LogFinish();
         }
+
+        ImGui::Checkbox("Onion skinning", &OnionSkinning);
+        ImGui::Checkbox("Show path", &ShowPath);
         ImGui::End();
 
         ImGui::Render();
