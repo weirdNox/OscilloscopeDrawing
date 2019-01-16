@@ -44,7 +44,6 @@ static inline void selectAnim(int Anim) {
 
 // NOTE(nox): X and Y are in the range [0, 64[, except when X has the Z bit set.
 static void setCoordinates(u8 X, u8 Y) {
-    LATDCLR = (X & ZDisableBit) ? ZPin : 0;
     LATDSET = LDAC;
 
     // NOTE(nox): Multi-Write command - 5.6.2
@@ -54,8 +53,10 @@ static void setCoordinates(u8 X, u8 Y) {
     Wire.write(Data, arrayCount(Data));
     Wire.endTransmission();
 
-    LATDCLR = LDAC;
+    LATDCLR = (X & ZDisableBit) ? ZPin : 0;
     ZTimer.start();
+
+    LATDCLR = LDAC; // NOTE(nox): Active both outputs at the same time
 }
 
 static void nextPacket() {
