@@ -51,8 +51,10 @@ typedef enum : u8 {
 
 // ------------------------------------------------------------------------------------------
 // NOTE(nox): Pong related
+s8 PaddleRelYPoints[] = {3, 2, 1, 0, -1, -2, -3};
+
 enum {
-    PadSize = 4*2+1,
+    PadHeight = arrayCount(PaddleRelYPoints),
     Pad1X = 3,
     Pad2X = GridSize-1-Pad1X,
 };

@@ -82,16 +82,13 @@ static void sendBuffer(buff *Buffer, int SerialTTY) {
 }
 
 
-enum {
-    UpdateDeltaMs = 33,
-    PadDelta = 2,
-};
+static const u64 UpdateDeltaMs = 33;
 
 typedef enum {
-    PlayerControl_None,
-    PlayerControl_Up,
-    PlayerControl_Down,
-} player_control;
+    Control_None,
+    Control_Up,
+    Control_Down,
+} paddle_control;
 
 typedef enum {
     Game_WaitingForInput,
@@ -99,14 +96,41 @@ typedef enum {
 } game_state;
 
 typedef struct {
-     player_control Player1;
-     player_control Player2;
+    paddle_control Left;
+    paddle_control Right;
 } controls;
+
+typedef struct {
+    r32 X;
+    r32 Y;
+    r32 VelX;
+    r32 VelY;
+} ball;
+
+typedef struct {
+    u8 CenterY;
+} paddle;
 
 static inline u64 getTimeMs() {
     timespec Spec;
     clock_gettime(CLOCK_MONOTONIC, &Spec);
     return Spec.tv_nsec / 1000000;
+}
+
+static inline void updatePaddle(paddle *Paddle, paddle_control Control) {
+    u8 PaddleDelta = 2;
+
+    if(Control == Control_Up) {
+        Paddle->CenterY += PaddleDelta;
+    } else if(Control == Control_Down) {
+        Paddle->CenterY -= PaddleDelta;
+    }
+
+    u8 Min = PadHeight/2;
+    u8 Max = (GridSize-1) - PadHeight/2;
+    Paddle->CenterY = clamp(Min, Paddle->CenterY, Max);
+    printf("Max: %u\tMin: %u\n", Paddle->CenterY + PaddleRelYPoints[0],
+           Paddle->CenterY+PaddleRelYPoints[PadHeight-1]);
 }
 
 int main(int, char**) {
@@ -145,9 +169,13 @@ int main(int, char**) {
 
 
     serial_ctx Serial = -1;
-    u32 Pad1Center, Pad2Center;
-    u64 LastUpdateTime = getTimeMs();
+
+    u64 Time = getTimeMs();
+    u64 TimeAccumulator = 0;
+
     game_state State;
+    paddle LeftPaddle, RightPaddle;
+    ball Ball;
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -168,58 +196,53 @@ int main(int, char**) {
             if(ImGui::Button("Connect")) {
                 Serial = serialConnect();
                 if(Serial >= 0) {
-                    Pad1Center = Pad2Center = GridSize/2;
                     State = Game_WaitingForInput;
+                    LeftPaddle.CenterY = RightPaddle.CenterY = GridSize/2;
+                    Ball.X = Ball.Y = (GridSize-1)/2.f;
                 }
             }
         }
         else {
             // NOTE(nox): Game processing
-            u64 Time = getTimeMs();
-            if(Time - LastUpdateTime > UpdateDeltaMs) {
-                LastUpdateTime = Time;
+            u64 NewTime = getTimeMs();
+            TimeAccumulator = min(TimeAccumulator + (NewTime-Time), 4*UpdateDeltaMs);
+            Time = NewTime;
+
+            bool DidUpdate = false;
+            while(TimeAccumulator >= UpdateDeltaMs) {
+                TimeAccumulator -= UpdateDeltaMs;
+                DidUpdate = true;
 
                 controls Controls = {};
                 if(ImGui::IsKeyDown(GLFW_KEY_W)) {
-                    Controls.Player1 = PlayerControl_Up;
+                    Controls.Left = Control_Up;
                 }
                 else if(ImGui::IsKeyDown(GLFW_KEY_S)) {
-                    Controls.Player1 = PlayerControl_Down;
+                    Controls.Left = Control_Down;
                 }
 
                 if(ImGui::IsKeyDown(GLFW_KEY_UP)) {
-                    Controls.Player2 = PlayerControl_Up;
+                    Controls.Right = Control_Up;
                 }
                 else if(ImGui::IsKeyDown(GLFW_KEY_DOWN)) {
-                    Controls.Player2 = PlayerControl_Down;
+                    Controls.Right = Control_Down;
                 }
 
                 if(State == Game_WaitingForInput) {
-                    if(Controls.Player1 || Controls.Player2) {
+                    if(Controls.Left || Controls.Right) {
                         State = Game_Playing;
                     }
                 }
 
                 if(State == Game_Playing) {
-                    if(Controls.Player1 == PlayerControl_Up) {
-                        Pad1Center += PadDelta;
-                    }
-                    else if(Controls.Player1 == PlayerControl_Down) {
-                        Pad1Center -= PadDelta;
-                    }
-                    Pad1Center = clamp(0, Pad1Center, GridSize-1);
-
-                    if(Controls.Player2 == PlayerControl_Up) {
-                        Pad2Center += PadDelta;
-                    }
-                    else if(Controls.Player2 == PlayerControl_Down) {
-                        Pad2Center -= PadDelta;
-                    }
-                    Pad2Center = clamp(0, Pad2Center, GridSize-1);
+                    updatePaddle(&LeftPaddle, Controls.Left);
+                    updatePaddle(&RightPaddle, Controls.Left);
                 }
+            }
 
+            if(DidUpdate) {
                 buff Buff = {};
-                writePongUpdate(&Buff, Pad1Center, Pad2Center, 32, 32);
+                writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, 32, 32);
                 sendBuffer(&Buff, Serial);
             }
 

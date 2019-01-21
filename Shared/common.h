@@ -14,18 +14,12 @@ typedef  int32_t s32;
 
 typedef    float r32;
 
-static inline u8 clamp(u8 Min, u8 Val, u8 Max) {
-    if(Val < Min) {
-        Val = Min;
-    } else if(Val > Max) {
-        Val = Max;
-    }
-
-    return Val;
-}
-
 #ifndef _ARDUINO_H
 static inline s32 min(s32 A, s32 B) {
+    return A < B ? A : B;
+}
+
+static inline u64 min(u64 A, u64 B) {
     return A < B ? A : B;
 }
 
@@ -35,6 +29,26 @@ static inline s32 max(s32 A, s32 B) {
 #endif
 
 static inline s32 clamp(s32 Min, s32 Val, s32 Max) {
+    if(Val < Min) {
+        Val = Min;
+    } else if(Val > Max) {
+        Val = Max;
+    }
+
+    return Val;
+}
+
+static inline s8 clamp(s8 Min, s8 Val, s8 Max) {
+    if(Val < Min) {
+        Val = Min;
+    } else if(Val > Max) {
+        Val = Max;
+    }
+
+    return Val;
+}
+
+static inline u8 clamp(u8 Min, u8 Val, u8 Max) {
     if(Val < Min) {
         Val = Min;
     } else if(Val > Max) {
