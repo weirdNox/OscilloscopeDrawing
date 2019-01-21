@@ -105,6 +105,14 @@ static void writeInfoLedOff(buff *Buff) {
     writeHeader(Buff, Command_InfoLedOff);
 }
 
+static void writePowerOn(buff *Buff) {
+    writeHeader(Buff, Command_PowerOn);
+}
+
+static void writePowerOff(buff *Buff) {
+    writeHeader(Buff, Command_PowerOff);
+}
+
 static void writeSelectAnim(buff *Buff, int Anim) {
     if(Anim) {
         writeHeader(Buff, Command_Select1);

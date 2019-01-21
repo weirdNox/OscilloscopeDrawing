@@ -59,6 +59,16 @@ static void setCoordinates(u8 X, u8 Y) {
     LATDCLR = LDAC; // NOTE(nox): Active both outputs at the same time
 }
 
+static void powerOffOutputs() {
+    // NOTE(nox): Select power-down bits - 5.6.6
+    // PD1 = 1, PD0 = 0 -> 100kΩ to ground
+    enum {Cmd = 0xA0};
+    u8 Data[] = {(Cmd | 0x0A), (0xA0)};
+    Wire.beginTransmission(DacAddr);
+    Wire.write(Data, arrayCount(Data));
+    Wire.endTransmission();
+}
+
 static void nextPacket() {
     while(Rx.Read != Rx.Write && Rx.Data[Rx.Read]) {
         Rx.Read = (Rx.Read + 1) & Rx.Mask;
@@ -137,6 +147,21 @@ static void decodeRx() {
 
                     case Command_InfoLedOff: {
                         LATGCLR = InfoLed;
+                    } break;
+
+                    case Command_PowerOn: {
+                        SelectedFrame = 0;
+                        FrameRepeatCount = 0;
+                        FrameTimer.start();
+                        LATDSET = ZPin;
+                    } break;
+
+                    case Command_PowerOff: {
+                        FrameTimer.stop();
+                        ZTimer.stop();
+                        ShouldUpdate = false;
+                        powerOffOutputs();
+                        LATDCLR = ZPin;
                     } break;
 
                     case Command_Select0: {
@@ -253,10 +278,12 @@ void setup() {
         Wire.beginTransmission(DacAddr);
         Wire.write(0x50);
 
-        u8 ActiveData[] = {0x9F, 0xFF};
+        // NOTE(nox): VRef = 1 (internal voltage reference), Gx = 1 (2x gain)
+        u8 ActiveData[] = {0x90, 0x00};
         Wire.write(ActiveData, 2);
         Wire.write(ActiveData, 2);
 
+        // NOTE(nox): PD1 = 1, PD0 = 0 -> 100kΩ to ground
         u8 DisabledData[] = {0x40, 0x00};
         Wire.write(DisabledData, 2);
         Wire.write(DisabledData, 2);

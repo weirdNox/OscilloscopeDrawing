@@ -351,13 +351,13 @@ int main(int, char**) {
 
             if(ImGui::Button("Power on")) {
                 buff Buff = {};
-                writeInfoLedOn(&Buff);
+                writePowerOn(&Buff);
                 sendBuffer(&Buff, Serial.Tty);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
                 buff Buff = {};
-                writeInfoLedOff(&Buff);
+                writePowerOff(&Buff);
                 sendBuffer(&Buff, Serial.Tty);
             }
 
