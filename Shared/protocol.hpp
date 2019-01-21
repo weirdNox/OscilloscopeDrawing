@@ -1,5 +1,5 @@
-#if !defined(PROTOCOL_H)
-#define PROTOCOL_H
+#if !defined(PROTOCOL_HPP)
+#define PROTOCOL_HPP
 
 #if !(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
 #error "Implemented only for little endianness!"
@@ -14,8 +14,10 @@ enum {
 };
 
 typedef enum : u8 {
-    Command_On,
-    Command_Off,
+    Command_InfoLedOn,
+    Command_InfoLedOff,
+    Command_PowerOn,
+    Command_PowerOff,
     Command_Select0,
     Command_Select1,
     Command_UpdateFrame,
@@ -95,12 +97,12 @@ static void writeHeader(buff *Buff, command Command) {
     writeU16(Buff, 0); // NOTE(nox): Placeholder for length
 }
 
-static void writePowerOn(buff *Buff) {
-    writeHeader(Buff, Command_On);
+static void writeInfoLedOn(buff *Buff) {
+    writeHeader(Buff, Command_InfoLedOn);
 }
 
-static void writePowerOff(buff *Buff) {
-    writeHeader(Buff, Command_Off);
+static void writeInfoLedOff(buff *Buff) {
+    writeHeader(Buff, Command_InfoLedOff);
 }
 
 static void writeSelectAnim(buff *Buff, int Anim) {
@@ -148,4 +150,4 @@ static inline void finalizePacket(buff *Buff, buff *Dest) {
     stuffBytes(Buff, Dest);
 }
 
-#endif // PROTOCOL_H
+#endif // PROTOCOL_HPP

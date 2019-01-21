@@ -6,7 +6,7 @@
 
 #define assert(...)
 #include <common.h>
-#include <protocol.h>
+#include <protocol.hpp>
 
 enum {
     DacAddr = 0x60,
@@ -131,11 +131,11 @@ static void decodeRx() {
                 Pkt.Read += 3;
 
                 switch(Command) {
-                    case Command_On: {
+                    case Command_InfoLedOn: {
                         LATGSET = InfoLed;
                     } break;
 
-                    case Command_Off: {
+                    case Command_InfoLedOff: {
                         LATGCLR = InfoLed;
                     } break;
 

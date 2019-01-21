@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include <common.h>
-#include <protocol.h>
+#include <protocol.hpp>
 #include "imgui_extensions.cpp"
 
 #define xCoord(Idx, GridSize) (Idx % GridSize)
@@ -345,15 +345,19 @@ int main(int, char**) {
             }
         }
         else {
+            if(ImGui::Button("Disconnect")) {
+                serialDisconnect(&Serial);
+            }
+
             if(ImGui::Button("Power on")) {
                 buff Buff = {};
-                writePowerOn(&Buff);
+                writeInfoLedOn(&Buff);
                 sendBuffer(&Buff, Serial.Tty);
             }
             ImGui::SameLine();
             if(ImGui::Button("Power off")) {
                 buff Buff = {};
-                writePowerOff(&Buff);
+                writeInfoLedOff(&Buff);
                 sendBuffer(&Buff, Serial.Tty);
             }
 
@@ -392,6 +396,7 @@ int main(int, char**) {
                 sendBuffer(&Buff, Serial.Tty);
             }
 
+            ImGui::SameLine();
             if(ImGui::Button("Upload test")) {
                 u8 FrameCount = 0;
 #define frameBuff(Name, Num)                                \
@@ -434,8 +439,16 @@ int main(int, char**) {
                 sendBuffer(&FrameCountBuff, Serial.Tty);
             }
 
-            if(ImGui::Button("Disconnect")) {
-                serialDisconnect(&Serial);
+            if(ImGui::Button("Info light on")) {
+                buff Buff = {};
+                writeInfoLedOn(&Buff);
+                sendBuffer(&Buff, Serial.Tty);
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("Info light off")) {
+                buff Buff = {};
+                writeInfoLedOff(&Buff);
+                sendBuffer(&Buff, Serial.Tty);
             }
         }
 
