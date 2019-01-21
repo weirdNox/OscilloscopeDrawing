@@ -166,6 +166,7 @@ int main(int, char**) {
             }
         }
 
+        // NOTE(nox): Debug messages from the PIC32
         int N;
         char Buff[200];
         if(Serial.Tty >= 0 && (N = read(Serial.Tty, Buff, sizeof(Buff)))) {

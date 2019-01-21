@@ -5,12 +5,35 @@
 #error "Implemented only for little endianness!"
 #endif
 
-// ------------------------------------------------------------------------------------------
-// NOTE(nox): Common to RX/TX
+// NOTE(nox):
+// Keeping the grid size a power of 2 with exponent < 8 let's us encode the coordinate + Z
+// information in a single byte.
+//
+// An exponent of 6 (2^6 = 64) seems a good trade-off, because the drawings contain enough detail to be
+// perceptible, without wasting many bytes when dragging and there is still space to encode the Z setting.
+//
+// The 12-bit code to send and our encoding will be as follows (x means ignored and V is the value we want):
+//                                 MSB | LSB
+// To send             |   |   |   |   |   |   | 0 | 0 | 0 | 0 | 0 | 0 |
+// X           | x | Z | V | V | V | V | V | V |
+// Y           | x | x | V | V | V | V | V | V |
+#define inputMsb(Val) ((Val >> 2) & 0x0F)
+#define inputLsb(Val) ((Val << 6) & 0xC0)
 enum {
     BaudRate = 115200,
     MagicNumber = 0xA0,
     MaxPacketSize = 1<<10,
+    GridSize = 1<<6,
+};
+
+// ------------------------------------------------------------------------------------------
+// NOTE(nox): Animation related
+enum {
+    MaxFrames = 10,
+    MaxActive = 300, // NOTE(nox): Limit to achieve 30 FPS
+    FPS = 30,
+    MinFrameTimeMs = (1000 + FPS - 1)/FPS,
+    ZDisableBit = 1<<6,
 };
 
 typedef enum : u8 {
@@ -24,6 +47,26 @@ typedef enum : u8 {
     Command_UpdateFrameCount,
     CommandCount
 } command;
+
+
+// ------------------------------------------------------------------------------------------
+// NOTE(nox): Pong related
+enum {
+    PadSize = 4*2+1,
+    Pad1X = 3,
+    Pad2X = GridSize-1-Pad1X,
+};
+
+typedef enum : u8 {
+    PongCmd_InfoLedOn,
+    PongCmd_InfoLedOff,
+    PongCmd_Update,
+    PongCommandCount
+} pong_command;
+
+
+// ------------------------------------------------------------------------------------------
+// NOTE(nox): Common to RX/TX
 
 typedef struct {
     u32 Read;
@@ -125,6 +168,14 @@ static void writeSelectAnim(buff *Buff, int Anim) {
 static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
     writeHeader(Buff, Command_UpdateFrameCount);
     writeU8(Buff, NewFrameCount);
+}
+
+static void writePongUpdate(buff *Buff, u8 Pad1Center, u8 Pad2Center, u8 BallX, u8 BallY) {
+    writeHeader(Buff, (command)PongCmd_Update);
+    writeU8(Buff, Pad1Center);
+    writeU8(Buff, Pad2Center);
+    writeU8(Buff, BallX);
+    writeU8(Buff, BallY);
 }
 
 static void stuffBytes(buff *Orig, buff *Dest) {
