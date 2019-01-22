@@ -18,10 +18,10 @@ enum {
 static Timer2 FrameTimer = {};
 
 static volatile bool ShouldUpdate = false;
-static u8 LeftPaddleCenter;
-static u8 RightPaddleCenter;
-static u8 BallX;
-static u8 BallY;
+static u8 LeftPaddleCenter = 32;
+static u8 RightPaddleCenter = 32;
+static u8 BallX = 128;
+static u8 BallY = 128;
 static u8 LeftScore;
 static u8 RightScore;
 
@@ -107,13 +107,28 @@ static rx_buff Rx;
 static buff Pkt;
 static bool SkipPacket;
 
-// NOTE(nox): X and Y are in the range [0, 64[, except when X has the Z bit set.
+// NOTE(nox): X and Y are in the range [0, 64[
 static void setCoordinates(u8 X, u8 Y) {
     LATDSET = LDAC;
 
     // NOTE(nox): Multi-Write command - 5.6.2
     u8 Data[] = {(0x40 | (0 << 1) | 1), (0x90 | inputMsb(X)), inputLsb(X),  // Output A
                  (0x40 | (1 << 1) | 1), (0x90 | inputMsb(Y)), inputLsb(Y)}; // Output B
+    Wire.beginTransmission(DacAddr);
+    Wire.write(Data, arrayCount(Data));
+    Wire.endTransmission();
+
+    LATDCLR = LDAC; // NOTE(nox): Active both outputs at the same time
+}
+
+
+// NOTE(nox): X and Y are in the range [0, 256[
+static void setCoordinatesHighRes(u8 X, u8 Y) {
+    LATDSET = LDAC;
+
+    // NOTE(nox): Multi-Write command - 5.6.2
+    u8 Data[] = {(0x40 | (0 << 1) | 1), (0x90 | inputMsbHighRes(X)), inputLsbHighRes(X),  // Output A
+                 (0x40 | (1 << 1) | 1), (0x90 | inputMsbHighRes(Y)), inputLsbHighRes(Y)}; // Output B
     Wire.beginTransmission(DacAddr);
     Wire.write(Data, arrayCount(Data));
     Wire.endTransmission();
@@ -330,7 +345,7 @@ void loop() {
         setCoordinates(31, 60);
         setCoordinates(32, 60);
         drawNumber(RightScore, 4);
-        setCoordinates(BallX, BallY);
+        setCoordinatesHighRes(BallX, BallY);
         ShouldUpdate = false;
     }
 

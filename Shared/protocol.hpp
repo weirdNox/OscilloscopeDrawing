@@ -19,6 +19,10 @@
 // Y           | x | x | V | V | V | V | V | V |
 #define inputMsb(Val) ((Val >> 2) & 0x0F)
 #define inputLsb(Val) ((Val << 6) & 0xC0)
+
+// NOTE(nox): This version uses the full byte
+#define inputMsbHighRes(Val) ((Val >> 4) & 0x0F)
+#define inputLsbHighRes(Val) ((Val << 4) & 0xF0)
 enum {
     BaudRate = 115200,
     MagicNumber = 0xA0,
@@ -174,12 +178,12 @@ static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
     writeU8(Buff, NewFrameCount);
 }
 
-static void writePongUpdate(buff *Buff, u8 LeftPaddleCenter, u8 RightPaddleCenter, u8 BallX, u8 BallY) {
+static void writePongUpdate(buff *Buff, u8 LeftPaddleCenter, u8 RightPaddleCenter, r32 BallX, r32 BallY) {
     writeHeader(Buff, (command)PongCmd_Update);
     writeU8(Buff, LeftPaddleCenter);
     writeU8(Buff, RightPaddleCenter);
-    writeU8(Buff, BallX);
-    writeU8(Buff, BallY);
+    writeU8(Buff, round(BallX*4.04761904762f));
+    writeU8(Buff, round(BallY*4.04761904762f));
 }
 
 static void writePongScore(buff *Buff, u8 LeftScore, u8 RightScore) {

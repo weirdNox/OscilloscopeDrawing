@@ -187,6 +187,13 @@ static inline void randomizeBall(ball *Ball) {
     }
 }
 
+static inline void restartGame(paddle *Left, paddle *Right, ball *Ball, u8 *LeftScore, u8 *RightScore) {
+    *LeftScore = *RightScore = 0;
+    Left->CenterY = Right->CenterY = GridSize/2;
+    Ball->Pos = {GridSize/2.0f, (r32)(Left->CenterY)};
+    Ball->Vel = {BallVel, 0};
+}
+
 static inline u64 getTimeMs() {
     timespec Spec = {};
     clock_gettime(CLOCK_MONOTONIC, &Spec);
@@ -247,7 +254,6 @@ int main(int, char**) {
     u64 Time = getTimeMs();
     u64 TimeAccumulator = 0;
 
-    game_state State;
     paddle LeftPaddle, RightPaddle;
     u8 LeftScore, RightScore;
     ball Ball;
@@ -271,10 +277,7 @@ int main(int, char**) {
             if(ImGui::Button("Connect")) {
                 Serial = serialConnect();
                 if(Serial >= 0) {
-                    State = Game_WaitingForInput;
-                    LeftPaddle.CenterY = RightPaddle.CenterY = GridSize/2;
-                    LeftScore = RightScore = 0;
-                    randomizeBall(&Ball);
+                    restartGame(&LeftPaddle, &RightPaddle, &Ball, &LeftScore, &RightScore);
                 }
             }
         }
@@ -286,32 +289,32 @@ int main(int, char**) {
 
             bool DidUpdate = false;
             bool UpdateScore = false;
-            while(TimeAccumulator >= UpdateDeltaMs) {
-                TimeAccumulator -= UpdateDeltaMs;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_SPACE)) {
                 DidUpdate = true;
+                UpdateScore = true;
+                restartGame(&LeftPaddle, &RightPaddle, &Ball, &LeftScore, &RightScore);
+            }
+            else {
+                while(TimeAccumulator >= UpdateDeltaMs) {
+                    TimeAccumulator -= UpdateDeltaMs;
+                    DidUpdate = true;
 
-                controls Controls = {};
-                if(ImGui::IsKeyDown(GLFW_KEY_W)) {
-                    Controls.Left = Control_Up;
-                }
-                else if(ImGui::IsKeyDown(GLFW_KEY_S)) {
-                    Controls.Left = Control_Down;
-                }
-
-                if(ImGui::IsKeyDown(GLFW_KEY_UP)) {
-                    Controls.Right = Control_Up;
-                }
-                else if(ImGui::IsKeyDown(GLFW_KEY_DOWN)) {
-                    Controls.Right = Control_Down;
-                }
-
-                if(State == Game_WaitingForInput) {
-                    if(Controls.Left || Controls.Right) {
-                        State = Game_Playing;
+                    controls Controls = {};
+                    if(ImGui::IsKeyDown(GLFW_KEY_W)) {
+                        Controls.Left = Control_Up;
                     }
-                }
+                    else if(ImGui::IsKeyDown(GLFW_KEY_S)) {
+                        Controls.Left = Control_Down;
+                    }
 
-                if(State == Game_Playing) {
+                    if(ImGui::IsKeyDown(GLFW_KEY_UP)) {
+                        Controls.Right = Control_Up;
+                    }
+                    else if(ImGui::IsKeyDown(GLFW_KEY_DOWN)) {
+                        Controls.Right = Control_Down;
+                    }
+
                     updatePaddle(&LeftPaddle, Controls.Left);
                     updatePaddle(&RightPaddle, Controls.Right);
 
@@ -366,8 +369,7 @@ int main(int, char**) {
 
             if(DidUpdate) {
                 buff Buff = {};
-                writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, round(Ball.Pos.X),
-                                round(Ball.Pos.Y));
+                writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, Ball.Pos.X, Ball.Pos.Y);
                 sendBuffer(&Buff, Serial);
             }
 
