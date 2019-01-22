@@ -26,6 +26,7 @@ static volatile bool ShouldUpdate = false;
 static u32 SelectedAnimation = 0;
 static u32 SelectedFrame = 0;
 static u32 FrameRepeatCount = 0;
+static bool SetTo0 = false;
 
 static rx_buff Rx;
 static buff Pkt;
@@ -207,6 +208,14 @@ static void decodeRx() {
                         Animations[SelectedAnimation].FrameCount = FrameCount;
                     } break;
 
+                    case Command_SetTo0: {
+                        SetTo0 = true;
+                    } break;
+
+                    case Command_DontSetTo0: {
+                        SetTo0 = false;
+                    } break;
+
                     default: {} break;
                 }
 
@@ -311,7 +320,10 @@ void loop() {
             point *P = Frame->Points + I;
             setCoordinates(P->X, P->Y);
         }
-        // TODO(nox): setCoordinates(0, 0)? Ou então apagar o Z? Para tirar do sítio final.
+        if(SetTo0) {
+            setCoordinates(0, 0);
+        }
+
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
             FrameRepeatCount = 0;

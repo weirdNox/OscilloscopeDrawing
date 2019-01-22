@@ -440,6 +440,18 @@ int main(int, char**) {
                 sendBuffer(&FrameCountBuff, Serial.Tty);
             }
 
+            if(ImGui::Button("Set to 0 after drawing")) {
+                buff Buff = {};
+                writeSetTo0(&Buff);
+                sendBuffer(&Buff, Serial.Tty);
+            }
+
+            if(ImGui::Button("Don't set to 0 after drawing")) {
+                buff Buff = {};
+                writeDontSetTo0(&Buff);
+                sendBuffer(&Buff, Serial.Tty);
+            }
+
             if(ImGui::Button("Info light on")) {
                 buff Buff = {};
                 writeInfoLedOn(&Buff);

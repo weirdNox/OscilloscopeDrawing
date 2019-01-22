@@ -1,6 +1,8 @@
 #if !defined(PROTOCOL_HPP)
 #define PROTOCOL_HPP
 
+#include <math.h>
+
 #if !(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
 #error "Implemented only for little endianness!"
 #endif
@@ -49,6 +51,8 @@ typedef enum : u8 {
     Command_Select1,
     Command_UpdateFrame,
     Command_UpdateFrameCount,
+    Command_SetTo0,
+    Command_DontSetTo0,
     CommandCount
 } command;
 
@@ -176,6 +180,14 @@ static void writeSelectAnim(buff *Buff, int Anim) {
 static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
     writeHeader(Buff, Command_UpdateFrameCount);
     writeU8(Buff, NewFrameCount);
+}
+
+static void writeSetTo0(buff *Buff) {
+    writeHeader(Buff, Command_SetTo0);
+}
+
+static void writeDontSetTo0(buff *Buff) {
+    writeHeader(Buff, Command_DontSetTo0);
 }
 
 static void writePongUpdate(buff *Buff, u8 LeftPaddleCenter, u8 RightPaddleCenter, r32 BallX, r32 BallY) {
