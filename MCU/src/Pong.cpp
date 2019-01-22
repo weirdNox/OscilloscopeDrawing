@@ -312,8 +312,8 @@ void setup() {
     }
     delay(50);
 
-    // NOTE(nox): 30 FPS
-    FrameTimer.setFrequency(30);
+    // NOTE(nox): 60 FPS
+    FrameTimer.setFrequency(60);
     FrameTimer.attachInterrupt(setUpdateFlag);
     FrameTimer.start();
 }
@@ -326,11 +326,11 @@ void loop() {
         for(s8 I = -PaddleHeight/2; I <= PaddleHeight/2; ++I) {
             setCoordinates(RightPaddleX, RightPaddleCenter+I);
         }
-        setCoordinates(BallX, BallY);
         drawNumber(LeftScore, -5);
         setCoordinates(31, 60);
         setCoordinates(32, 60);
         drawNumber(RightScore, 4);
+        setCoordinates(BallX, BallY);
         ShouldUpdate = false;
     }
 

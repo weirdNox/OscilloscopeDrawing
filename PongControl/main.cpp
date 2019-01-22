@@ -188,9 +188,9 @@ static inline void randomizeBall(ball *Ball) {
 }
 
 static inline u64 getTimeMs() {
-    timespec Spec;
+    timespec Spec = {};
     clock_gettime(CLOCK_MONOTONIC, &Spec);
-    return Spec.tv_nsec / 1000000;
+    return Spec.tv_sec*1000 + Spec.tv_nsec / 1000000;
 }
 
 static inline void updatePaddle(paddle *Paddle, paddle_control Control) {
