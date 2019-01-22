@@ -249,6 +249,7 @@ int main(int, char**) {
 
     game_state State;
     paddle LeftPaddle, RightPaddle;
+    u8 LeftScore, RightScore;
     ball Ball;
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -272,6 +273,7 @@ int main(int, char**) {
                 if(Serial >= 0) {
                     State = Game_WaitingForInput;
                     LeftPaddle.CenterY = RightPaddle.CenterY = GridSize/2;
+                    LeftScore = RightScore = 0;
                     randomizeBall(&Ball);
                 }
             }
@@ -283,6 +285,7 @@ int main(int, char**) {
             Time = NewTime;
 
             bool DidUpdate = false;
+            bool UpdateScore = false;
             while(TimeAccumulator >= UpdateDeltaMs) {
                 TimeAccumulator -= UpdateDeltaMs;
                 DidUpdate = true;
@@ -342,8 +345,21 @@ int main(int, char**) {
                         }
                     }
 
-                    if((Ball.Pos.X < -0.5f) || (Ball.Pos.X > GridSize-0.5f)) {
+                    if(Ball.Pos.X < -0.5f) {
+                        ++RightScore;
+                        if(RightScore >= 10) {
+                            LeftScore = RightScore = 0;
+                        }
                         randomizeBall(&Ball);
+                        UpdateScore = true;
+                    }
+                    else if(Ball.Pos.X > GridSize-0.5f) {
+                        ++LeftScore;
+                        if(LeftScore >= 10) {
+                            LeftScore = RightScore = 0;
+                        }
+                        randomizeBall(&Ball);
+                        UpdateScore = true;
                     }
                 }
             }
@@ -352,6 +368,12 @@ int main(int, char**) {
                 buff Buff = {};
                 writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, round(Ball.Pos.X),
                                 round(Ball.Pos.Y));
+                sendBuffer(&Buff, Serial);
+            }
+
+            if(UpdateScore) {
+                buff Buff = {};
+                writePongScore(&Buff, LeftScore, RightScore);
                 sendBuffer(&Buff, Serial);
             }
 

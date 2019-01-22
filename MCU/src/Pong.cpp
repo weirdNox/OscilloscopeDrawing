@@ -22,6 +22,86 @@ static u8 LeftPaddleCenter;
 static u8 RightPaddleCenter;
 static u8 BallX;
 static u8 BallY;
+static u8 LeftScore;
+static u8 RightScore;
+
+typedef struct {
+    u8 X, Y;
+} point;
+typedef struct {
+    u32 PointCount;
+    point Points[13];
+} number;
+static const number Numbers[] = {
+    {
+        12,
+        {
+            {31, 62}, {32, 62}, {33, 62}, {33, 61}, {33, 60}, {33, 59}, {33, 58},
+            {32, 58}, {31, 58}, {31, 59}, {31, 60}, {31, 61},
+        }
+    },
+    {
+        5,
+        {
+            {32, 62}, {32, 61}, {32, 60}, {32, 59}, {32, 58},
+        }
+    },
+    {
+        11,
+        {
+            {31, 62}, {32, 62}, {33, 62}, {33, 61}, {33, 60}, {32, 60}, {31, 60},
+            {31, 59}, {31, 58}, {32, 58}, {33, 58},
+        }
+    },
+    {
+        10,
+        {
+            {31, 62}, {32, 62}, {33, 62}, {33, 61}, {33, 60}, {32, 60}, {33, 59},
+            {33, 58}, {32, 58}, {31, 58},
+        }
+    },
+    {
+        9,
+        {
+            {31, 62}, {31, 61}, {31, 60}, {32, 60}, {33, 60}, {33, 61}, {33, 62},
+            {33, 59}, {33, 58},
+        }
+    },
+    {
+        11,
+        {
+            {33, 62}, {32, 62}, {31, 62}, {31, 61}, {31, 60}, {32, 60}, {33, 60},
+            {33, 59}, {33, 58}, {32, 58}, {31, 58},
+        }
+    },
+    {
+        12,
+        {
+            {33, 62}, {32, 62}, {31, 62}, {31, 61}, {31, 60}, {31, 59}, {31, 58},
+            {32, 58}, {33, 58}, {33, 59}, {33, 60}, {32, 60},
+        }
+    },
+    {
+        7,
+        {
+            {31, 62}, {32, 62}, {33, 62}, {33, 61}, {33, 60}, {33, 59}, {33, 58},
+        }
+    },
+    {
+        13,
+        {
+            {33, 62}, {32, 62}, {31, 62}, {31, 61}, {31, 60}, {32, 60}, {33, 60},
+            {33, 61}, {33, 59}, {33, 58}, {32, 58}, {31, 58}, {31, 59},
+        }
+    },
+    {
+        12,
+        {
+            {31, 58}, {32, 58}, {33, 58}, {33, 59}, {33, 60}, {32, 60}, {31, 60},
+            {31, 61}, {31, 62}, {32, 62}, {33, 62}, {33, 61},
+        }
+    }
+};
 
 static rx_buff Rx;
 static buff Pkt;
@@ -39,6 +119,18 @@ static void setCoordinates(u8 X, u8 Y) {
     Wire.endTransmission();
 
     LATDCLR = LDAC; // NOTE(nox): Active both outputs at the same time
+}
+
+static void drawNumber(u8 I, u8 Offset) {
+    if(I >= 10) {
+        I = 0;
+    }
+
+    const number *Number = Numbers+I;
+    for(u32 Current = 0; Current < Number->PointCount; ++Current) {
+        const point *Point = Number->Points + Current;
+        setCoordinates(Point->X+Offset, Point->Y);
+    }
 }
 
 static void nextPacket() {
@@ -130,6 +222,15 @@ static void decodeRx() {
                         RightPaddleCenter = readU8(&Pkt);
                         BallX = readU8(&Pkt);
                         BallY = readU8(&Pkt);
+                    } break;
+
+                    case PongCmd_SetScore: {
+                        enum { CmdSize = 2 };
+                        if(Length < CmdSize) {
+                            break;
+                        }
+                        LeftScore = readU8(&Pkt);
+                        RightScore = readU8(&Pkt);
                     } break;
 
                     default: {} break;
@@ -226,8 +327,10 @@ void loop() {
             setCoordinates(RightPaddleX, RightPaddleCenter+I);
         }
         setCoordinates(BallX, BallY);
-        delayMicroseconds(100);
-        setCoordinates(0, 0);
+        drawNumber(LeftScore, -5);
+        setCoordinates(31, 60);
+        setCoordinates(32, 60);
+        drawNumber(RightScore, 4);
         ShouldUpdate = false;
     }
 

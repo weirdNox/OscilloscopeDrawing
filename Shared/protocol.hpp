@@ -64,6 +64,7 @@ typedef enum : u8 {
     PongCmd_InfoLedOn,
     PongCmd_InfoLedOff,
     PongCmd_Update,
+    PongCmd_SetScore,
     PongCommandCount
 } pong_command;
 
@@ -179,6 +180,12 @@ static void writePongUpdate(buff *Buff, u8 LeftPaddleCenter, u8 RightPaddleCente
     writeU8(Buff, RightPaddleCenter);
     writeU8(Buff, BallX);
     writeU8(Buff, BallY);
+}
+
+static void writePongScore(buff *Buff, u8 LeftScore, u8 RightScore) {
+    writeHeader(Buff, (command)PongCmd_SetScore);
+    writeU8(Buff, LeftScore);
+    writeU8(Buff, RightScore);
 }
 
 static void stuffBytes(buff *Orig, buff *Dest) {
