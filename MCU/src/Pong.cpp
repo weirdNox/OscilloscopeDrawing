@@ -18,8 +18,8 @@ enum {
 static Timer2 FrameTimer = {};
 
 static volatile bool ShouldUpdate = false;
-static u8 Pad1Center;
-static u8 Pad2Center;
+static u8 LeftPaddleCenter;
+static u8 RightPaddleCenter;
 static u8 BallX;
 static u8 BallY;
 
@@ -126,8 +126,8 @@ static void decodeRx() {
                         if(Length < CmdSize) {
                             break;
                         }
-                        Pad1Center = readU8(&Pkt);
-                        Pad2Center = readU8(&Pkt);
+                        LeftPaddleCenter = readU8(&Pkt);
+                        RightPaddleCenter = readU8(&Pkt);
                         BallX = readU8(&Pkt);
                         BallY = readU8(&Pkt);
                     } break;
@@ -219,9 +219,15 @@ void setup() {
 
 void loop() {
     if(ShouldUpdate) {
-        setCoordinates(Pad1X, Pad1Center);
-        setCoordinates(Pad2X, Pad2Center);
+        for(s8 I = -PaddleHeight/2; I <= PaddleHeight/2; ++I) {
+            setCoordinates(LeftPaddleX, LeftPaddleCenter+I);
+        }
+        for(s8 I = -PaddleHeight/2; I <= PaddleHeight/2; ++I) {
+            setCoordinates(RightPaddleX, RightPaddleCenter+I);
+        }
         setCoordinates(BallX, BallY);
+        delayMicroseconds(100);
+        setCoordinates(0, 0);
         ShouldUpdate = false;
     }
 

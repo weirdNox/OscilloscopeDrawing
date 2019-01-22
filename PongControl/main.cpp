@@ -83,6 +83,8 @@ static void sendBuffer(buff *Buffer, int SerialTTY) {
 
 
 static const u64 UpdateDeltaMs = 33;
+static const r32 Pi = 3.1415926535f;
+static const r32 BallVel = 2.f;
 
 typedef enum {
     Control_None,
@@ -103,13 +105,87 @@ typedef struct {
 typedef struct {
     r32 X;
     r32 Y;
-    r32 VelX;
-    r32 VelY;
+} v2;
+
+typedef struct {
+    v2 Pos;
+    v2 Vel;
 } ball;
 
 typedef struct {
     u8 CenterY;
 } paddle;
+
+static inline v2 add(v2 A, v2 B) {
+    v2 Result = {A.X + B.X, A.Y + B.Y};
+    return Result;
+}
+
+static inline v2 sub(v2 A, v2 B) {
+    v2 Result = {A.X - B.X, A.Y - B.Y};
+    return Result;
+}
+
+static inline v2 mult(v2 Vec, r32 A) {
+    v2 Result = {Vec.X*A, Vec.Y*A};
+    return Result;
+}
+
+static inline r32 lengthSq(v2 Vec) {
+    return Vec.X*Vec.X + Vec.Y*Vec.Y;
+}
+
+static inline r32 length(v2 Vec) {
+    return sqrt(lengthSq(Vec));
+}
+
+static inline v2 normalize(v2 Vec) {
+    v2 Result = mult(Vec, 1.0f / length(Vec));
+    return Result;
+}
+
+static inline r32 cross(v2 A, v2 B) {
+    return A.X*B.Y - A.Y*B.X;
+}
+
+static inline v2 rotate(v2 Vec, r32 Deg) {
+    r32 Rad = Pi * Deg / 180.0f;
+    r32 Cos = cos(Rad);
+    r32 Sin = sin(Rad);
+    v2 Result = {Cos*Vec.X - Sin*Vec.Y, Sin*Vec.X + Cos*Vec.Y};
+    return Result;
+}
+
+typedef struct {
+    bool Exists;
+    r32 T, U;
+} segment_intersection;
+static segment_intersection intersect(v2 Pos1, v2 Dir1, v2 Pos2, v2 Dir2) {
+    segment_intersection Result = {};
+
+    r32 Cross = cross(Dir1, Dir2);
+    if(Cross != 0) {
+        v2 Diff = sub(Pos2, Pos1);
+        Result.T = cross(Diff, Dir2)/Cross;
+        Result.U = cross(Diff, Dir1)/Cross;
+
+        if((Result.T >= 0.0f && Result.T <= 1.0f) &&
+           (Result.U >= 0.0f && Result.U <= 1.0f))
+        {
+            Result.Exists = true;
+        }
+    }
+
+    return Result;
+}
+
+static inline void randomizeBall(ball *Ball) {
+    Ball->Pos.X = Ball->Pos.Y = (GridSize-1)/2.f;
+    Ball->Vel = rotate({BallVel*0.5f, 0}, (drand48()*2.0f - 1)*45);
+    if(drand48() >= .5f) {
+        Ball->Vel = mult(Ball->Vel, -1);
+    }
+}
 
 static inline u64 getTimeMs() {
     timespec Spec;
@@ -126,14 +202,12 @@ static inline void updatePaddle(paddle *Paddle, paddle_control Control) {
         Paddle->CenterY -= PaddleDelta;
     }
 
-    u8 Min = PadHeight/2;
-    u8 Max = (GridSize-1) - PadHeight/2;
-    Paddle->CenterY = clamp(Min, Paddle->CenterY, Max);
-    printf("Max: %u\tMin: %u\n", Paddle->CenterY + PaddleRelYPoints[0],
-           Paddle->CenterY+PaddleRelYPoints[PadHeight-1]);
+    Paddle->CenterY = clamp(PaddleMinY, Paddle->CenterY, PaddleMaxY);
 }
 
 int main(int, char**) {
+    srand48(time(0));
+
     glfwSetErrorCallback(glfwErrorCallback);
     if(!glfwInit()) {
         return 1;
@@ -198,7 +272,7 @@ int main(int, char**) {
                 if(Serial >= 0) {
                     State = Game_WaitingForInput;
                     LeftPaddle.CenterY = RightPaddle.CenterY = GridSize/2;
-                    Ball.X = Ball.Y = (GridSize-1)/2.f;
+                    randomizeBall(&Ball);
                 }
             }
         }
@@ -236,13 +310,48 @@ int main(int, char**) {
 
                 if(State == Game_Playing) {
                     updatePaddle(&LeftPaddle, Controls.Left);
-                    updatePaddle(&RightPaddle, Controls.Left);
+                    updatePaddle(&RightPaddle, Controls.Right);
+
+                    v2 OldPos = Ball.Pos;
+                    Ball.Pos = add(Ball.Pos, Ball.Vel);
+                    if(Ball.Vel.Y > 0.0f && Ball.Pos.Y > GridSize-1) {
+                        Ball.Pos.Y = GridSize-1;
+                        Ball.Vel.Y = -Ball.Vel.Y;
+                    }
+                    else if(Ball.Vel.Y < 0.0f && Ball.Pos.Y < 0) {
+                        Ball.Pos.Y = 0;
+                        Ball.Vel.Y = -Ball.Vel.Y;
+                    }
+                    else {
+                        v2 WallStart, WallDirection, VelDirection;
+                        if(Ball.Vel.X < 0) {
+                            WallStart = {LeftPaddleX+0.5f, LeftPaddle.CenterY - PaddleHeight/2.0f};
+                            WallDirection = {0, PaddleHeight};
+                            VelDirection = {BallVel, 0};
+                        }
+                        else {
+                            WallStart = {RightPaddleX-0.5f, RightPaddle.CenterY + PaddleHeight/2.0f};
+                            WallDirection = {0, -PaddleHeight};
+                            VelDirection = {-BallVel, 0};
+                        }
+
+                        segment_intersection Intersection = intersect(OldPos, Ball.Vel, WallStart, WallDirection);
+                        if(Intersection.Exists) {
+                            Ball.Pos = add(OldPos, mult(Ball.Vel, Intersection.T));
+                            Ball.Vel = rotate(VelDirection, (Intersection.U - 0.5f)*75.0f);
+                        }
+                    }
+
+                    if((Ball.Pos.X < -0.5f) || (Ball.Pos.X > GridSize-0.5f)) {
+                        randomizeBall(&Ball);
+                    }
                 }
             }
 
             if(DidUpdate) {
                 buff Buff = {};
-                writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, 32, 32);
+                writePongUpdate(&Buff, LeftPaddle.CenterY, RightPaddle.CenterY, round(Ball.Pos.X),
+                                round(Ball.Pos.Y));
                 sendBuffer(&Buff, Serial);
             }
 

@@ -51,13 +51,14 @@ typedef enum : u8 {
 
 // ------------------------------------------------------------------------------------------
 // NOTE(nox): Pong related
-s8 PaddleRelYPoints[] = {3, 2, 1, 0, -1, -2, -3};
-
 enum {
-    PadHeight = arrayCount(PaddleRelYPoints),
-    Pad1X = 3,
-    Pad2X = GridSize-1-Pad1X,
+    PaddleHeight = 2*6 + 1,
+    LeftPaddleX = 3,
+    RightPaddleX = GridSize-1-LeftPaddleX,
 };
+
+static const u8 PaddleMinY = PaddleHeight/2;
+static const u8 PaddleMaxY = (GridSize-1) - PaddleHeight/2;
 
 typedef enum : u8 {
     PongCmd_InfoLedOn,
@@ -172,10 +173,10 @@ static void writeUpdateFrameCount(buff *Buff, u8 NewFrameCount) {
     writeU8(Buff, NewFrameCount);
 }
 
-static void writePongUpdate(buff *Buff, u8 Pad1Center, u8 Pad2Center, u8 BallX, u8 BallY) {
+static void writePongUpdate(buff *Buff, u8 LeftPaddleCenter, u8 RightPaddleCenter, u8 BallX, u8 BallY) {
     writeHeader(Buff, (command)PongCmd_Update);
-    writeU8(Buff, Pad1Center);
-    writeU8(Buff, Pad2Center);
+    writeU8(Buff, LeftPaddleCenter);
+    writeU8(Buff, RightPaddleCenter);
     writeU8(Buff, BallX);
     writeU8(Buff, BallY);
 }
