@@ -32,6 +32,16 @@ static rx_buff Rx;
 static buff Pkt;
 static bool SkipPacket;
 
+static void selectFrame(u8 FrameIdx) {
+    animation *Animation = Animations + SelectedAnimation;
+    if(FrameIdx < Animation->FrameCount) {
+        FrameRepeatCount = 0;
+        SelectedFrame = FrameIdx;
+        u16 Fps = max(Animation->Frames[SelectedFrame].Fps, MinFps);
+        FrameTimer.setFrequency(Fps);
+    }
+}
+
 static inline void selectAnim(int Anim) {
     if(Anim) {
         SelectedAnimation = 1;
@@ -39,8 +49,7 @@ static inline void selectAnim(int Anim) {
     else {
         SelectedAnimation = 0;
     }
-    SelectedFrame = 0;
-    FrameRepeatCount = 0;
+    selectFrame(0);
 }
 
 // NOTE(nox): X and Y are in the range [0, 64[, except when X has the Z bit set.
@@ -151,8 +160,7 @@ static void decodeRx() {
                     } break;
 
                     case Command_PowerOn: {
-                        SelectedFrame = 0;
-                        FrameRepeatCount = 0;
+                        selectFrame(0);
                         FrameTimer.start();
                         LATDSET = ZPin;
                     } break;
@@ -174,13 +182,14 @@ static void decodeRx() {
                     } break;
 
                     case Command_UpdateFrame: {
-                        enum { CmdHeaderSize = 1+2+2 };
+                        enum { CmdHeaderSize = 1+2+2+2 };
 
                         if(Length < CmdHeaderSize) {
                             break;
                         }
 
                         u8 FrameIdx = readU8(&Pkt);
+                        u16 Fps = readU16(&Pkt);
                         u16 RepeatCount = readU16(&Pkt);
                         u16 PointCount = readU16(&Pkt);
 
@@ -190,6 +199,7 @@ static void decodeRx() {
                         }
 
                         frame *Frame = Animations[SelectedAnimation].Frames + FrameIdx;
+                        Frame->Fps = max(Fps, MinFps);
                         Frame->RepeatCount = RepeatCount;
                         Frame->PointCount  = PointCount;
                         for(u16 I = 0; I < PointCount; ++I) {
@@ -198,14 +208,17 @@ static void decodeRx() {
                             Point->Y = readU8(&Pkt);
                         }
 
-                        SelectedFrame = 0;
-                        FrameRepeatCount = 0;
+                        if(SelectedFrame == FrameIdx) {
+                            selectFrame(FrameIdx);
+                        }
                     } break;
 
                     case Command_UpdateFrameCount: {
                         u8 FrameCount = readU8(&Pkt);
                         FrameCount = clamp(1, FrameCount, MaxFrames);
                         Animations[SelectedAnimation].FrameCount = FrameCount;
+
+                        selectFrame(0);
                     } break;
 
                     case Command_SetTo0: {
@@ -301,8 +314,7 @@ void setup() {
     }
     delay(50);
 
-    // NOTE(nox): 30 FPS
-    FrameTimer.setFrequency(30);
+    selectAnim(0);
     FrameTimer.attachInterrupt(setUpdateFlag);
     FrameTimer.start();
 
@@ -326,8 +338,7 @@ void loop() {
 
         ++FrameRepeatCount;
         if(FrameRepeatCount >= Frame->RepeatCount) {
-            FrameRepeatCount = 0;
-            SelectedFrame = (SelectedFrame + 1 >= Anim->FrameCount) ? 0 : SelectedFrame + 1;
+            selectFrame((SelectedFrame + 1 >= Anim->FrameCount) ? 0 : SelectedFrame + 1);
         }
         ShouldUpdate = false;
     }

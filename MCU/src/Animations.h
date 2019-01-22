@@ -3,6 +3,7 @@ typedef struct {
 } point;
 
 typedef struct {
+    u16 Fps;
     u16 RepeatCount;
     u16 PointCount;
     point Points[MaxPointsPerFrame];

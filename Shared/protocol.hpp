@@ -35,10 +35,10 @@ enum {
 // ------------------------------------------------------------------------------------------
 // NOTE(nox): Animation related
 enum {
+    MinFps = 30,
     MaxFrames = 10,
     MaxActive = 300, // NOTE(nox): Limit to achieve 30 FPS
-    FPS = 30,
-    MinFrameTimeMs = (1000 + FPS - 1)/FPS,
+    MinFrameTimeMs = (1000 + MinFps - 1)/MinFps,
     ZDisableBit = 1<<6,
 };
 

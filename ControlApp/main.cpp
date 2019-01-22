@@ -105,6 +105,11 @@ static void sendBuffer(buff *Buffer, int SerialTTY) {
     write(SerialTTY, Encoded.Data, Encoded.Write);
 }
 
+static inline u32 calculateFps(u32 PointCount) {
+    // NOTE(nox): Assuming each point takes 100us
+    return 1000/(PointCount/10 + 3);
+}
+
 int main(int, char**) {
     glfwSetErrorCallback(glfwErrorCallback);
     if(!glfwInit()) {
@@ -374,10 +379,12 @@ int main(int, char**) {
             if(ImGui::Button("Upload animation")) {
                 for(u8 I = 0; I < FrameCount; ++I) {
                     frame *Frame = Frames + I;
+                    u32 Fps = calculateFps(Frame->ActiveCount);
                     buff Buff = {};
                     writeHeader(&Buff, Command_UpdateFrame);
                     writeU8(&Buff, I);
-                    writeU16(&Buff, frameRepeatCount(Frame->NumMilliseconds, FPS));
+                    writeU16(&Buff, Fps);
+                    writeU16(&Buff, frameRepeatCount(Frame->NumMilliseconds, Fps));
                     writeU16(&Buff, Frame->ActiveCount);
 
                     for(int J = 0; J < Frame->ActiveCount; ++J) {
@@ -404,6 +411,7 @@ int main(int, char**) {
                 buff Name = {};                             \
                 writeHeader(&Name, Command_UpdateFrame);    \
                 writeU8(&Name,  Num);                       \
+                writeU16(&Name,  30);                       \
                 writeU16(&Name,  20);                       \
                 writeU16(&Name, 300);                       \
                 ++FrameCount;
@@ -477,8 +485,9 @@ int main(int, char**) {
             ImGui::LogText(I1 "{ %d,\n" I2 "{", FrameCount);
             for(int I = 0; I < FrameCount; ++I) {
                 frame *Frame = Frames + I;
-                ImGui::LogText("\n" I3 "{\n" I4 "%d, %d, {", frameRepeatCount(Frame->NumMilliseconds, FPS),
-                               Frame->ActiveCount);
+                u32 Fps = calculateFps(Frame->ActiveCount);
+                ImGui::LogText("\n" I3 "{\n" I4 "%d, %d, %d, {", Fps,
+                               frameRepeatCount(Frame->NumMilliseconds, Fps), Frame->ActiveCount);
                 for(int J = 0; J < Frame->ActiveCount; ++J) {
                     if((J % 7) == 0) {
                         ImGui::LogText("\n" I5);
