@@ -503,7 +503,11 @@ int main(int, char**) {
             ImGui::LogText("\n" I2 "}\n" I1 "},");
             ImGui::LogFinish();
         }
+        ImGui::End();
 
+        // ------------------------------------------------------------------------------------------
+        // NOTE(nox): Drawing utilities
+        ImGui::Begin("Drawing utilities", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Checkbox("Onion skinning", &OnionSkinning);
         ImGui::Checkbox("Show path", &ShowPath);
         ImGui::End();
