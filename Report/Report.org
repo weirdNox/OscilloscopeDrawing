@@ -74,7 +74,7 @@ Desfazando X e o Y \SI{90}{\degree}, a circunferência foi desenhada com sucesso
 Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
 raios diferentes a cada \SI{5}{\second}. Depois decidimos fazer uma letra, ainda manualmente. Desenhámos
 no /software Inkscape/ a letra =C=, num documento quadrado de 4096 pontos de lado, e amostrámos 20
-pontos, definindo as suas coordenadas X e Y, e escrevendo num array do programa que corria no MCU. Mais
+pontos, definindo as suas coordenadas X e Y, e escrevendo num array do programa que corria no \ac{MCU}. Mais
 uma vez, o teste foi um sucesso.
 
 A partir deste ponto considerámos que já tínhamos uma base de trabalho razoável e decidimos efetuar a
@@ -185,13 +185,13 @@ extremamente trabalhoso, pelo que ponderámos duas opções para otimizar o proc
 
 - Opção 2 :: Criação de um programa para o computador em C, com interface gráfica, para que, com auxílio
              de uma grelha, o utilizador possa desenhar a forma geométrica que quiser, sendo esta
-             exportada num formato fácil de importar no programa do MCU.
+             exportada num formato fácil de importar no programa do \ac{MCU}.
 
 Optámos pela *opção 2* uma vez que:
 - Linguagem C já era familiar
 - Tinha maior flexibilidade para implementar várias /features/ que tínhamos em mente
 - Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (UART) com o PIC32 e enviar as
-  animações para o MCU sem ter de recompilar e fazer upload
+  animações para o \ac{MCU} sem ter de recompilar e fazer upload
 
 A dificuldade principal era criar um programa com interface gráfica de raiz. No entanto, como já tínhamos
 investigado sobre esse tópico anteriormente, decidimos usar as bibliotecas [[https://www.glfw.org/][GLFW]] (+ [[https://github.com/raysan5/raylib/blob/master/src/rglfw.c][rglfw]] para facilitar a
@@ -227,36 +227,87 @@ A aplicação de controlo, após finalizada, possui as seguintes features:\nolis
 Para além destas features, tem ainda exportação de animações quer copiando um array em C para o
 /clipboard/ quer [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][diretamente para o PIC32 através de um protocolo binário]].
 
-* TODO Protocolo de comunicação com o PIC32 (sobre UART)
+* Protocolo de comunicação com o PIC32 (sobre UART)
 :PROPERTIES:
 :ID:       6e5bb395-210e-4a84-81bf-a047e12a68e9
 :END:
 Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
-/little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
+/little-endian/. Mesmo assim, resolvemos adicionar uma cláusula de erro (compile-time) no programa, visto
 que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
 
 O envio de dados em /plain text/ era uma opção demasiado dispendiosa visto que cada carater requer a
 utilização de um byte, pelo que nem hesitámos em decidir que o protocolo seria binário.
 
-Deparamo-nos com este [[https://www.embeddedrelated.com/showarticle/113.php][artigo]], que achamos muito útil. Foi ao ler este artigo que tivemos o primeiro
-contacto com o algoritmo /COBS/.
+A definição e implementação do correto funcionamento do protocolo foi, sem alguma dúvida, a parte *mais
+exigente* deste trabalho. Queríamos um protocolo que fosse simples, rápido e adaptado para fazer
+transmissões grandes (ao contrário de transmissão de comandos curtos).
 
-Podemos resumir o algoritmo como cada bloco que termine com o delimitador escolhido é substituído por um
-bloco que começa com o tamanho do próprio bloco seguido dos dados, e o pacote final termina com o
-delimitador. A sequência de operações é a seguinte:
+Depois de muitas horas a pesquisar e muitas dúvidas pendentes, deparamo-nos com o algoritmo \ac{COBS}
+([[https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing][página da Wikipedia]]), de framing de pacotes (ou seja, sincronização com os pacotes de maneira a não se
+começar a ler do meio de um) usando um delimitador (0 no nosso caso). O algoritmo consegue remove a
+existência de delimitadores da mensagem a transmitir com /overhead/ *quase inexistente*!
 
-1. Ao analisar a sequência, começamos por verificar se o primeiro valor é a /escape sequence/,
-   inicializando o tamanho a escrever a /1/
-2. Caso não haja mais dados a ler, escrevemos a /escape sequence/
-3. Caso seja a /escape sequence/, escrevemos logo 01 e voltamos ao passo 1.
-4. Caso não seja, incrementamos o tamanho a escrever em 1 unidades
-5. Continuamos até encontrar a /escape sequence/, e aí escrevemos o tamanho seguido da sequência de dados
-   lida diferente da /escape sequence/
+Na versão final acabámos por usar uma versão modificada, em vez de ter o delimitador no fim de cada
+pacote, ter o delimitador no início de cada pacote. A razão dessa modificação foi pensarmos na
+possibilidade de ocorrerem erros e um pacote ficar truncado (sem o final) e querermos retomar logo no
+seguinte (vendo o delimitador no início). No entanto, temos agora o problema de nunca saber quando é que
+um pacote acaba, por isso sempre que descodificamos mais um bocado de um pacote, temos de verificar se já
+está completo.
 
-Assim, a sequência 07 09 00 01 00 00 02 03 04 05 06 00 18 22 passaria a 03 07 09 02 01 01 06 02 03 04 05 06 03 18 22 00.
+Para isso, definimos um cabeçalho constituído por:
+- Meio byte com um padrão "mágico" de verificação (\texttt{0xA} = \texttt{1010})
+- Meio byte com o comando (podemos então ter $2^4 = 16$ comandos diferentes)
+- 2 bytes com o tamanho do /payload/ (iríamos ter de certeza /payloads/ maiores do que 255 bytes)
 
-No caso da nossa implementação adaptada, o valor delimitador aparece no início (e não no fim do pacote,
-como na implementação original do /COBS/).
+Sempre que descodificamos mais uma parte, e se o padrão "mágico" estiver correto, verificamos se já temos
+o /payload/ completo verificando com o parâmetro do cabeçalho.
+
+Se estiver completo, é processado com base no comando transmitido. Se não estiver, esperamos que sejam
+descodificados mais blocos. Se houver erro no padrão mágico, então é marcado como inválido e esperamos
+pelo próximo delimitador para processar outro pacote.
+
+** Problemas de receção
+Apesar de parecer que estava tudo resolvido, neste tipo de problemas, há sempre mais dores de cabeça por
+resolver. Foram precisos vários dias (grande parte deles a pensar no problema) e duas implementações
+diferentes até conseguirmos obter comunicações consistentes.
+
+Por exemplo, só depois de fazermos a primeira implementação é que nos lembramos na importância do
+qualificador =volatile=, pois o compilador podia estar a induzir-nos em erro.
+
+Também tivemos problemas do buffer de receção ficar cheio e tivemos de o aumentar para 1024 bytes. Talvez
+o nosso código pudesse ter sido feito de maneira mais inteligente, descodificando /partes/ de grupos do
+\ac{COBS} enquanto eram recebidos (esses grupos são compostos por sequências de bytes sem o valor do
+delimitador /na mensagem original/ e podem ir até 255 bytes).
+
+No entanto, é um facto que em frames com muitos pontos, a maior parte do tempo (\SI{30}{\milli\second} em
+\SI{33}{\milli\second}) é passada a fazer a renderização da frame em si, com pouco tempo para
+processamento das mensagens recebidas.
+
+De qualquer maneira, acabámos por conseguir um programa que recebe /com sucesso/ todas as mensagens, e
+buffer overflows são indicados na InfoLed. Durante todos os nossos testes, nunca se acendeu, a não ser
+quando reduzimos o buffer de receção de propósito, como teste.
+
+** Notas adicionais
+A comunicação série foi feita sem o uso de bibliotecas externas (para além da =termios=), tanto na
+aplicação de controlo como no \ac{MCU} (não foi usada a biblioteca Arduino).
+
+O buffer de receção teve de ser potência de 2 pois isso permitiu-nos fazer um [[https://en.wikipedia.org/wiki/Circular_buffer][ring buffer]] *muito*
+eficiente a nível de instruções para o PIC32.
+
+Ao saturar a transmissão ao máximo, descobrimos que as mensagens deixavam de chegar, mas sem nunca se
+acender a InfoLed. Ao investigar o assunto, descobrimos que o mais provável era estar a fazer /overflow/
+do buffer de *transmissão definido no kernel do Linux* (/hardcoded/ para 4096 bytes). O erro acontecia
+quando se transmitiam *muito rapidamente* mais ou menos 5000 bytes, o que ainda nos fez acreditar mais
+que seria esse o problema.
+
+** Comandos implementados
+- Ligar/desligar a info LED
+- Ligar/desligar as saídas do \ac{DAC}
+- Seleção do slot de animação atual
+- Update de uma frame da animação selecionada
+- Update da contagem de frames da animação selecionada
+- Comando para ativar/desativar a passagem da saída para a coordenada (0,0) depois de desenhar, para o
+  ponto final não ficar muito mais forte do que os outros
 
 * Jogo Pong
 ** Contexto
@@ -283,9 +334,9 @@ Apenas foi necessário implementar 2 comandos:
 botão de ligação, pois o controlo das barreiras é feito através do teclado.
 
 Foi definido que a lógica o jogo deveria correr a 30FPS. Sempre que há um update são calculadas as novas
-posições das bolas e das barreiras, sendo estes enviados no final para o MCU.
+posições das bolas e das barreiras, sendo estes enviados no final para o \ac{MCU}.
 
-Caso a bola consiga passar as barreiras, o score atualizado também é enviado para o MCU.
+Caso a bola consiga passar as barreiras, o score atualizado também é enviado para o \ac{MCU}.
 
 *** Coordenadas, colisões e reflexões
 Tivemos de ter especial atenção com as coordenadas dos objetos e como fazemos as verificações de
@@ -318,7 +369,7 @@ ser acima ou abaixo do centro da barreira).
 
 *** Alta resolução
 Uma vez que a bola é representada por coordenadas fracionárias e neste programa não há Z bit, não custou
-nada usar o byte inteiro na transmissão para representar a sua posição. A única mudança no MCU é a
+nada usar o byte inteiro na transmissão para representar a sua posição. A única mudança no \ac{MCU} é a
 maneira como enviamos o comando para o \ac{DAC}.
 
 * Conclusão
@@ -431,5 +482,7 @@ output =
   \acro{FE}{falling edge}
   \acro{I2C}[\texorpdfstring{I\textsuperscript{2}C}{I2C}]{Inter-Integrated Circuit}
   \acro{LSB}{bits menos significativos}
+  \acro{COBS}{Consistent Overhead Byte Stuffing}
+  \acro{MCU}{Microcontroller Unit}
 \end{acronym}
 #+END_EXPORT
