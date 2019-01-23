@@ -1,5 +1,5 @@
 #+TITLE: Projeto de Computadores
-#+SUBTITLE: Desenho de figuras arbitrárias usando um \acs{DAC} com o modo XY
+#+SUBTITLE: Desenho de figuras arbitrárias em osciloscópios, usando o modo XY e um \acs{DAC}
 #+AUTHOR: André Aragão e Gonçalo Santos
 #+LANGUAGE: pt
 #+LATEX_HEADER: \usepackage[margin=.7in]{geometry}
