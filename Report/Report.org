@@ -339,6 +339,22 @@ que seria esse o problema.
 - Comando para ativar/desativar a passagem da saída para a coordenada (0,0) depois de desenhar, para o
   ponto final não ficar muito mais forte do que os outros
 
+** Descodificador do \acs{COBS} para o Sigrok
+Uma das ferramentas que deu imenso jeito no /debugging/ do projeto foi um analisador digital, e o
+programa open-source [[https://sigrok.org/wiki/PulseView][PulseView]]. Para nos facilitar os testes do protocolo, ainda fizemos um decoder de
+COBS em Python, usando a API fornecida pela biblioteca Sigrok, e que dá para ser /stacked/ em cima do
+decoder UART que já vinha com a biblioteca.
+
+#+NAME:   fig:sigrok
+#+CAPTION: /Printscreen/ do Sigrok a analisar o nosso protocolo
+[[file:Pictures/sigrok.png]]
+
+[[fig:sigrok][No printscreen]] podemos ver uma parte de uma sequência de comandos descodificados, onde na última linha
+vemos o output do nosso decoder. Por exemplo, o último =Start= indica o início de um comando de update da
+contagem de frames (\texttt{0x7}), com o padrão mágico válido (\texttt{0xA}), com tamanho da /payload/
+\texttt{0x0001}, com a contagem nova a ser 3 e o último 0 resulta da codificação \ac{COBS}, a que
+chamamos de /ghost zero/.
+
 * Jogo Pong
 ** Contexto
 Numa das idas ao laboratório para testar no osciloscópio analógico, o técnico sugeriu fazermos alguma
