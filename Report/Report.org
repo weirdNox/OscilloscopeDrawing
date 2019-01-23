@@ -4,7 +4,7 @@
 #+LANGUAGE: pt
 #+LATEX_HEADER: \usepackage[margin=1in]{geometry}
 #+LATEX_HEADER: \usepackage[portuguese]{babel}
-#+LATEX_HEADER: \usepackage{siunitx}
+#+LATEX_HEADER: \usepackage[binary-units]{siunitx}
 #+LATEX_HEADER: \usepackage{indentfirst}
 #+LATEX_HEADER: \usepackage[section]{placeins}
 #+LATEX_HEADER: \usepackage[printonlyused]{acronym}
@@ -13,56 +13,93 @@
 
 * Introdução
 Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
-do osciloscópio (ou XYZ nos analógicos). Colocámos como primeira opção o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]] visto que se tratava
-de um \ac{DAC} mais rápido (menor tempo de asssentamento) do que o outro proposto nos trabalhos, da
-/Texas Instruments/, apesar de termos menor resolução: 12 bits, ao invés dos 16bits do outro.
+do osciloscópio (ou XYZ nos analógicos). Colocámos como primeira opção o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]] visto que se tratava de
+um \ac{DAC} mais rápido (menor tempo de asssentamento) do que o outro proposto nos trabalhos, da /Texas
+Instruments/, apesar de termos menor resolução: \SI{12}{\bit}, ao invés dos \SI{16}{\bit} do outro.
 
-* Detalhes técnicos
-** Configuração inicial
-A primeira coisa que fizemos foi ler cuidadosamente a /datasheet/ correspondente ao *MCP4728*. Também 
-revimos o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o protocolo de
-comunicação usado pelo conversor.
+** Ideia do trabalho
+Inicialmente, a ideia era fazer um gerador de sinais com os sinais clássicos, tais como ondas
+sinusoidais, quadradas e triangulares, com as propriedades ajustáveis, e ainda, caso houvesse tempo, um
+gerador de sinais arbitrário, onde o utilizador pode desenhar a forma de onda que quiser.
 
-Efetuámos a montagem cuidadosa do circuito pedido, assim como [[fig:Wiring][o seu desenho]] a
-computador recorrendo ao programa [[http://fritzing.org/home/][Fritzing]] e de seguida escrevemos
-um programa simples que fazia uma chamada a todos os endereços \ac{I2C} possíveis para termos a certeza
-que estávamos a ter uma comunicação bem sucedida com o dispositivo.
+No entanto, depois de lermos a /datasheet/ do MCP4728, vimos que o resultado não seria muito
+satisfatório, uma vez que a tecnologia \ac{I2C} não é a mais indicada para este tipo de funcionalidade, e
+o tempo de assentamento do \ac{DAC}, ainda que incrivelmente baixo para algumas aplicações, resultaria
+numas ondas não muito suaves ou então de muito baixa frequência.
+
+Voltando ao /brainstorm/, lembrámo-nos de ver algumas pessoas a desenhar imagens em osciloscópios. Depois
+de pensar no assunto, apercebemo-nos que seria a aplicação ideal para um projeto destes, uma vez que, no
+modo XY, o tempo de assentamento era suficientemente baixo para não se notarem as transições dos saltos
+em demasia.
+
+Propusémo-nos então a fazer um sistema de desenho de animações onde o utilizador pode desenhar várias
+frames de tempo regulável e ver uma representação fiel no osciloscópio do que desenhou.
+
+* Configuração inicial
+A primeira coisa que fizemos foi ler cuidadosamente a /datasheet/ correspondente ao MCP4728. Também
+revimos o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o protocolo de comunicação usado pelo conversor.
+
+Efetuámos a montagem cuidadosa do circuito pedido, assim como [[fig:Wiring][o seu desenho]] a computador recorrendo ao
+programa [[http://fritzing.org/home/][Fritzing]], e de seguida escrevemos um programa simples que fazia uma chamada a todos os endereços
+\ac{I2C} possíveis para termos a certeza que estávamos a ter uma comunicação bem sucedida com o
+dispositivo.
 
 #+NAME: fig:Wiring
 #+CAPTION: Representação das ligações elétricas
 [[file:Pictures/breadboard_setup.png]]
 
-
 Não só descobrimos que a montagem tinha sido feita corretamente, uma vez que estávamos a receber um
 \texttt{ACK} do MCP4728, mas também que o seu endereço não era o que vinha por defeito da fábrica -
 \texttt{0x60} - mas sim \texttt{0x61} (este dispositivo tem os 3 \ac{LSB} de endereço configuráveis,
-guardados numa EEPROM). Verificamos na /datasheet/ que existe um comando /General Call Read
-Address/, que permite obter o endereço do \acs{DAC} sem fazer /polling/ de todos. Apesar de já não ser
-necessário, implementámos de qualquer maneira como desafio.
+guardados numa EEPROM).
 
-Implementamos do comando /Write \acs{I2C} Address Bits/ foi bem sucedida, conseguindo mudar o
-endereço de \texttt{0x61} para \texttt{0x60}.
+Verificámos na /datasheet/ que existe um comando [[id:4425274b-aab9-4c6e-a1b8-babebde948b2][General Call Read Address]], que permite obter o endereço
+do \ac{DAC} sem fazer /polling/ de todos os endereços. Apesar de já não ser necessário, implementámo-lo
+de qualquer maneira como desafio.
 
-A seguir queriamos testar se conseguíamos comunicar corretamente com o *MCP4728*. Enviamos um valor de 
-tensão a ser lido num dos outputs e a sua leitura foi bem sucedida.
+A implementação do comando [[id:4425274b-aab9-4c6e-a1b8-babebde948b2][Write \ac{I2C} Address Bits]] foi bem sucedida, conseguindo mudar o endereço
+de \texttt{0x61} para \texttt{0x60}.
 
-Resultante de uma pesquisa extensiva, e de tentativas de implementação diversas, acabámos
-por usar \SI{1}{\mega\hertz} como frequência de \acs{I2C} (/Fast Mode Plus/). As resistências de
-pull-up foram alteradas para um valor adequado: \SI{4.7}{\kilo\ohm}. Esta frequência é a máxima suportada
-pelo PIC32.
+Usando o comando [[id:56b96a2d-1623-49f4-9d64-b22e747d8ec1][Fast Write]], conseguimos definir a tensão de um dos outputs para um valor pretendido e
+definir os outros como resistências à massa.
 
-Consideramos que nos encontravamos na posição de iniciar o envio de informação e visualização no osciloscópio, no modo XY.
-Depois de testarmos o envio de 1 e de 2 pontos comsucesso, testamos a transmissão de uma circuferência. Para isso, utilizámos
- [[id:9086e8c2-73b9-4fc9-b209-bce4e496085a][estes scripts]] para gerar $100$ pontos da função $\sin$. Desfazando X e o Y \ang{90}, 
- a circunferência foi desenhada com sucesso. Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
+Considerámos que nos encontrávamos na posição de iniciar o envio de pontos e visualização no
+osciloscópio, no modo XY. Depois de testarmos o envio de 1 e 2 pontos com sucesso, testámos a transmissão
+de uma circuferência. Para isso, utilizámos [[id:9086e8c2-73b9-4fc9-b209-bce4e496085a][estes scripts]] para gerar $100$ pontos da função $\sin$.
+Desfazando X e o Y \ang{90}, a circunferência foi desenhada com sucesso.
+
+Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
 raios diferentes a cada \SI{5}{\second}.
 
-Como próximo passo decidimos fazer uma letra, ainda manualmente. Desenhamos no /software Inkscape/ a
+Como próximo passo decidimos fazer uma letra, ainda manualmente. Desenhámos no /software Inkscape/ a
 letra =C=, num documento quadrado de 4096 pontos de lado, e amostrámos 20 pontos, definindo as suas
-coordenadas X e Y. Mais uma vez, o teste foi um sucesso.
+coordenadas X e Y, e escrevendo num array do programa que corria no MCU. Mais uma vez, o teste foi um
+sucesso.
 
-A partir deste ponto consideramos que já tinhamos uma base de trabalho razoável e decidimos efetuar a medição rigorosa do tempo de envio de cada pacote,
- com o objetivo de que tudo o que fizessemos daqui para a frente tomasse partido de toda a capacidade do *MCU* e *MCP4728*.
+A partir deste ponto considerámos que já tínhamos uma base de trabalho razoável e decidimos efetuar a
+medição rigorosa do tempo de envio de cada pacote, com o objetivo de que tudo o que fizessemos daqui para
+a frente tomasse partido de toda a capacidade do PIC32 e do MCP4728.
+
+* Detalhes técnicos
+** TODO Comandos e configuração \acs{I2C}
+*** Frequência de funcionamento
+Tendo em conta que queríamos desenhar uma frame o mais rapidamente possível, acabámos por usar
+\SI{1}{\mega\hertz} como frequência de \ac{I2C} (/Fast Mode Plus/). As resistências de /pull-up/ foram
+alteradas para um valor adequado: \SI{4.7}{\kilo\ohm}.
+
+Enquanto que o \ac{DAC} suportava uma frequência ainda maior (/High Speed Mode/), esta era a máxima
+suportada pelo PIC32.
+
+*** /General Call Read Address/ e /Write \acs{I2C} Address Bits/
+:PROPERTIES:
+:ID:       4425274b-aab9-4c6e-a1b8-babebde948b2
+:END:
+Estes comandos merecem atenção especial pois não consistem apenas em correr um comando.
+
+*** /Fast Write/
+:PROPERTIES:
+:ID:       56b96a2d-1623-49f4-9d64-b22e747d8ec1
+:END:
 
 ** TODO Temporizações
 :PROPERTIES:
@@ -235,7 +272,7 @@ output =
 #+BEGIN_EXPORT latex
 \begin{acronym}
   \acro{DAC}{Digital-to-Analog Converter}
-  \acro{I2C}[I\textsuperscript{2}C]{Inter-Integrated Circuit}
+  \acro{I2C}[\texorpdfstring{I\textsuperscript{2}C}{I2C}]{Inter-Integrated Circuit}
   \acro{LSB}{bits menos significativos}
 \end{acronym}
 #+END_EXPORT
