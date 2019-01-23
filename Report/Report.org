@@ -2,7 +2,7 @@
 #+SUBTITLE: Desenho de figuras arbitrárias usando um \acs{DAC} com o modo XY
 #+AUTHOR: André Aragão e Gonçalo Santos
 #+LANGUAGE: pt
-#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
+#+LATEX_HEADER: \usepackage[margin=.7in]{geometry}
 #+LATEX_HEADER: \usepackage[portuguese]{babel}
 #+LATEX_HEADER: \usepackage[binary-units]{siunitx}
 #+LATEX_HEADER: \usepackage{indentfirst}
@@ -13,6 +13,7 @@
 
 #+LATEX_HEADER: \newcommand{\ordMas}{\textsuperscript{\b{o}}}
 #+LATEX_HEADER: \newcommand{\ordFem}{\textsuperscript{\b{a}}}
+#+LATEX_HEADER: \makeatletter\newcommand{\nolisttopbreak}{\vspace{\topsep}\nobreak\@afterheading}\makeatother
 
 * Introdução
 Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
@@ -81,7 +82,7 @@ medição rigorosa do tempo de envio de cada pacote, com o objetivo de que tudo 
 a frente tomasse partido de toda a capacidade do PIC32 e do MCP4728.
 
 * Detalhes técnicos
-** TODO Comandos utilizados e configuração \acs{I2C}
+** Comandos utilizados e configuração \acs{I2C}
 *** Frequência de funcionamento
 Tendo em conta que queríamos desenhar uma frame o mais rapidamente possível, acabámos por usar
 \SI{1}{\mega\hertz} como frequência de \ac{I2C} (/Fast Mode Plus/). As resistências de /pull-up/ foram
@@ -90,7 +91,7 @@ alteradas para um valor adequado: \SI{4.7}{\kilo\ohm}.
 Enquanto que o \ac{DAC} suportava uma frequência ainda maior (/High Speed Mode/), esta era a máxima
 suportada pelo PIC32.
 
-*** /General Call Read Address/ e /Write \acs{I2C} Address Bits/
+*** General Call Read Address e Write \acs{I2C} Address Bits
 :PROPERTIES:
 :ID:       4425274b-aab9-4c6e-a1b8-babebde948b2
 :END:
@@ -108,43 +109,77 @@ anulado precisamente no instante que queremos. Para conseguirmos reagir rapidame
 de \SI{500}{\kilo\hertz} que verificava esse bit e colocava o LDAC a 0 no instante correto (como está
 feito no ficheiro =AddrReadWrite.cpp=).
 
-*** /Fast Write/
+*** Sequential Write
+Este comando é usado na inicialização do programa para definir as definições das 4 saídas do \ac{DAC}.
+
+Como 2 saídas não são usadas, são desativadas e funcionam como uma resistência (de \SI{100}{\kilo\ohm}
+com PD = 10) à massa. Nesse modo de /power-down/, consomem consideravelmente menos corrente.
+
+*** Fast Write
 :PROPERTIES:
 :ID:       56b96a2d-1623-49f4-9d64-b22e747d8ec1
 :END:
 Este comando permite atualizar os registos internos de *todas* as saídas do \ac{DAC}. As saídas em si são
 atualizadas quando o =LDAC= é (ou passa para) 0.
 
-Como este comando envia informação de todas as saídas (\SI{1+8}{\byte}), não foi utilizado por nós na
-versão final.
+Apesar de enviar menos informação/saída, como este comando envia informação de todas as saídas, precisa
+de $1+8$ bytes; por isso, não foi utilizado por nós na versão final.
 
-*** /Multi-Write/
+*** Multi-Write
+Este é o comando mais usado no programa. É o que usamos para definir as tensões das saídas X e Y para
+cada ponto de cada frame. Como só atua nas 2 saídas relevantes, apenas precisa de $1 + 6$ bytes.
 
-** TODO Temporizações
+*** Select power-down bits
+Este comando é usado quando queremos desligar todas as saídas.
+
+** Temporizações
 :PROPERTIES:
 :ID:       f0c8fa30-7070-4227-afd7-e13092c0d150
 :END:
+*** Medição da frequência
+- Frequência \ac{I2C} (/Fast Mode Plus/): \SI{1}{\mega\hertz}
+- Frequência \ac{I2C} medida: $\frac{1}{\SI{1.1}{\micro\second}} \approx \SI{910}{\kilo\hertz}$
+
+*** Tempo de envio do Multi-Write
+\[ t_{byte} + t_{ack} = \SI{9.5}{\micro\second} \]
+
 #+NAME:   fig:Timings
-#+CAPTION: Diagrama ilustrativo dos tempos de envio
+#+CAPTION: Diagrama ilustrativo do tempo de envio do comando, =START= a verde e =STOP= a vermelho
 [[file:Pictures/timings_diagram.png]]
 
-Frequência \ac{I2C}, /Fast Mode Plus/ = 1Mhz
-Frequência \ac{I2C} efetivamente medida = 1/(1.1us) Hz = 910kHz
-Tempo de transferência de um byte + ACK = (8+1) / f = 9.5us
-Pausas encontradas:
-- p1, entre o endereço e os bytes de dados(significativamente maior que as pausas a seguir mencionadas): 6.9us
-- p2, entre bytes+ACK (5 pausas): 2.66us
-- p3, entre o 6 byte+ACK de dados e o STOP: 7.88us
-- p4, entre o STOP e o posterior START do próximo envio: 8.5us
-Assim, desprezando o tempo do START e STOP, o cáculo do período é dado por (7*t(byte+ack)+p1+5*p2+p3) = 95us.
+Duração das pausas:\nolisttopbreak
+- $p_1 = \SI{6.9}{\micro\second}$
+- $p_2 = \SI{2.66}{\micro\second}$
+- $p_3 = \SI{7.88}{\micro\second}$
+- $p_4 = \SI{8.5}{\micro\second}$
 
-A medição efetuada no osciloscópio, recorrendo aos cursores, confirmou os 95 us. Para questões de código
-aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados (não nos podemos esquecer
-que estamos a correr várias funções).
+Assim, desprezando o tempo do =START= e do =STOP=, o tempo de transmissão de cada comando é dado por
+$7 (t_{byte}+t_{ack})+p_1+5 p_2+ p_3) = \SI{95}{\micro\second}$. A medição efetuada no osciloscópio, recorrendo aos
+cursores, confirmou esse valor.
 
-** TODO Aplicação de controlo
+No programa, aproximámos esse tempo por \SI{100}{\micro\second}, e considerámos $p_4$ desprezável.
+
+*** Limitação do número de pontos por frame
+O resultado obtido na secção anterior permite-nos derivar um limite para o número de pontos máximo por
+frame.
+
+A nossa decisão foi que as animações /nunca/ deviam correr abaixo de 30 FPS. Sendo assim, temos um tempo
+máximo de \SI{30}{\milli\second} por cada frame. Uma vez que cada ponto demora \SI{100}{\micro\second} a ser
+transmitido, então podemos ter, /no máximo/, 300 pontos por frame.
+
+Este limite tem outras implicações práticas:
+- Nunca precisamos de alocação dinâmica pois conhecemos o limite superior do tamanho das animações.
+  Podemos simplesmente alocar um array com o tamanho máximo e preenchê-lo à medida que o utilizador
+  desenha.
+- A grelha de desenho deve ter pontos suficientes para se poder desenhar com detalhe, mas também não deve
+  ter pontos tão pequenos que um arrastar do rato preencha 200 ou 300 pontos de uma só vez. Usámos um
+  tamanho para a grelha de 64 por 64 e vimos que esse tamanho satisfazia ambas as condições.
+  - Este tamanho de grelha implica uma redução de precisão dos 12 bits que o \ac{DAC} fornece. Isto foi
+    usado a nosso favor no [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][protocolo de comunicação]].
+
+** Aplicação de controlo
 Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
-extremamente trabalhoso, pelo que ponderamos duas opções para otimizar o processo:
+extremamente trabalhoso, pelo que ponderámos duas opções para otimizar o processo:
 
 - Opção 1 :: Desenho na grelha de um ficheiro /Excel/ e exportando para /arrays/ com o uso de macros ou
              de um programa auxiliar que lesse =.csv=
@@ -156,30 +191,47 @@ extremamente trabalhoso, pelo que ponderamos duas opções para otimizar o proce
 Optámos pela *opção 2* uma vez que:
 - Linguagem C já era familiar
 - Tinha maior flexibilidade para implementar várias /features/ que tínhamos em mente
-- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (série) com o PIC32 e enviar
-  as animações sem recompilação ou /upload/ de programas novos
+- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (UART) com o PIC32 e enviar as
+  animações para o MCU sem ter de recompilar e fazer upload
 
 A dificuldade principal era criar um programa com interface gráfica de raiz. No entanto, como já tínhamos
 investigado sobre esse tópico anteriormente, decidimos usar as bibliotecas [[https://www.glfw.org/][GLFW]] (+ [[https://github.com/raysan5/raylib/blob/master/src/rglfw.c][rglfw]] para facilitar a
 compilação), [[https://github.com/skaslev/gl3w][gl3w]] e [[https://github.com/ocornut/imgui][Dear ImGui]], que facilitaram bastante esse processo, apesar de serem todas muito
 /lightweight/ em comparação com as alternativas (tais como Qt ou GTK).
 
-A aplicação de controlo, após finalizada, possui as seguintes features:
-- Possibilidade de desenhar várias /frames/ graficamente e de alterar o tempo de cada frame para valores
-  arbitrários.
-- Possibilidade de visualizar a frame anterior, para mais fácil reprodução de uma /imagem animada/. Esta
+Aproveitamos para referir o facto da biblioteca de interface gráfica, /Dear ImGui/, não ser como as mais
+conhecidas, pois em vez de ser /Retained Mode/, é, como o nome indica, /Immediate Mode GUI/. Este
+paradigma foi popularizado por [[https://caseymuratori.com/about][Casey Muratori]], criador da série educativa [[https://handmadehero.org/][Handmade Hero]].
+
+Numa /IMGUI/, o código do utilizador tem a maior parte dos dados necessários para renderizar a interface, e
+a interface é quase completamente reconstruída a 60FPS, enquanto que nas /RMGUIs/ os dados estão
+guardados nas estruturas das próprias bibliotecas.
+
+Assim sendo, é muito mais fácil criar interfaces altamente dinâmicas, onde tudo pode ser alterado de uma
+frame para a outra. Esta biblioteca em específico é também muito extensível, o que foi uma vantagem pois
+o /widget/ da grelha de desenho foi feito especialmente para este projeto.
+
+A aplicação de controlo, após finalizada, possui as seguintes features:\nolisttopbreak
+- Possibilidade de desenhar até 10 /frames/ graficamente e de alterar a duração de cada frame para
+  valores arbitrários.
+- Possibilidade de visualizar a frame anterior, para mais fácil criação de uma /imagem animada/. Esta
   técnica é designada por /onion skinning/. Os pontos da frame anterior aparecem com uma cor diferente,
-  mais neutra, para melhor distinção.
+  mais neutra, para distinção.
 - Uma linha vermelha, que percorre todos os pontos pela ordem em que são desenhados, de maneira a que
   seja evidente saltos visualizados no osciloscópio. Esta funcionalidade permite prever linhas
   indesejadas.
 - Possibilidade de optimizar o caminho, através do algoritmo /nearest neighbour/. Esta optimização tem
   sempre de ser averiguada visualmente pelo utilizador, visto que pode até prejudicar o caminho
   percorrido. Destina-se a tentar reduzir as linhas indesejadas resultantes de saltos.
-- ...
-- ...
+- Possibilidade de guardar/carregar animações para/de ficheiros (formato binário)
+
+Para além destas features, tem ainda exportação de animações quer copiando um array em C para o
+/clipboard/ quer [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][diretamente para o PIC32 através de um protocolo binário]].
 
 ** TODO Protocolo de comunicação com o PIC32 (sobre UART)
+:PROPERTIES:
+:ID:       6e5bb395-210e-4a84-81bf-a047e12a68e9
+:END:
 Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
 /little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
 que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
@@ -304,8 +356,8 @@ output =
 #+BEGIN_EXPORT latex
 \begin{acronym}
   \acro{DAC}{Digital-to-Analog Converter}
-  \acro{I2C}[\texorpdfstring{I\textsuperscript{2}C}{I2C}]{Inter-Integrated Circuit}
   \acro{FE}{falling edge}
+  \acro{I2C}[\texorpdfstring{I\textsuperscript{2}C}{I2C}]{Inter-Integrated Circuit}
   \acro{LSB}{bits menos significativos}
 \end{acronym}
 #+END_EXPORT
