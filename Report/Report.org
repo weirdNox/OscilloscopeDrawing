@@ -160,7 +160,25 @@ Assim, desprezando o tempo do =START= e do =STOP=, o tempo de transmissão de ca
 $7 (t_{byte}+t_{ack})+p_1+5 p_2+ p_3) = \SI{95}{\micro\second}$. A medição efetuada no osciloscópio, recorrendo aos
 cursores, confirmou esse valor.
 
-No programa, aproximamos esse tempo por \SI{100}{\micro\second}, e considerámos $p_4$ desprezável.
+No programa, aproximámos esse tempo por \SI{100}{\micro\second}, e considerámos $p_4$ desprezável.
+
+*** Limitação do número de pontos por frame
+O resultado obtido na secção anterior permite-nos derivar um limite para o número de pontos máximo por
+frame.
+
+A nossa decisão foi que as animações /nunca/ deviam correr abaixo de 30 FPS. Sendo assim, temos um tempo
+máximo de \SI{30}{\milli\second} por cada frame. Uma vez que cada ponto demora \SI{100}{\micro\second} a ser
+transmitido, então podemos ter, /no máximo/, 300 pontos por frame.
+
+Este limite tem outras implicações práticas:
+- Nunca precisamos de alocação dinâmica pois conhecemos o limite superior do tamanho das animações.
+  Podemos simplesmente alocar um array com o tamanho máximo e preenchê-lo à medida que o utilizador
+  desenha.
+- A grelha de desenho deve ter pontos suficientes para se poder desenhar com detalhe, mas também não deve
+  ter pontos tão pequenos que um arrastar do rato preencha 200 ou 300 pontos de uma só vez. Usámos um
+  tamanho para a grelha de 64 por 64 e vimos que esse tamanho satisfazia ambas as condições.
+  - Este tamanho de grelha implica uma redução de precisão dos 12 bits que o \ac{DAC} fornece. Isto foi
+    usado a nosso favor no [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][protocolo de comunicação]].
 
 ** Aplicação de controlo
 Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
@@ -185,9 +203,8 @@ compilação), [[https://github.com/skaslev/gl3w][gl3w]] e [[https://github.com/
 /lightweight/ em comparação com as alternativas (tais como Qt ou GTK).
 
 Aproveitamos para referir o facto da biblioteca de interface gráfica, /Dear ImGui/, não ser como as mais
-conhecidas, pois em vez de ser /Retained Mode/, é, como o nome indica, /Immediate Mode GUI/.
-
-Este paradigma foi popularizado por [[https://caseymuratori.com/about][Casey Muratori]], criador da série educativa [[https://handmadehero.org/][Handmade Hero]].
+conhecidas, pois em vez de ser /Retained Mode/, é, como o nome indica, /Immediate Mode GUI/. Este
+paradigma foi popularizado por [[https://caseymuratori.com/about][Casey Muratori]], criador da série educativa [[https://handmadehero.org/][Handmade Hero]].
 
 Numa /IMGUI/, o código do utilizador tem a maior parte dos dados necessários para renderizar a interface, e
 a interface é quase completamente reconstruída a 60FPS, enquanto que nas /RMGUIs/ os dados estão
@@ -197,9 +214,9 @@ Assim sendo, é muito mais fácil criar interfaces altamente dinâmicas, onde tu
 frame para a outra. Esta biblioteca em específico é também muito extensível, o que foi uma vantagem pois
 o /widget/ da grelha de desenho foi feito especialmente para este projeto.
 
-A aplicação de controlo, após finalizada, possui as seguintes features:
-- Possibilidade de desenhar várias /frames/ graficamente e de alterar o tempo de cada frame para valores
-  arbitrários.
+A aplicação de controlo, após finalizada, possui as seguintes features:\nolisttopbreak
+- Possibilidade de desenhar até 10 /frames/ graficamente e de alterar a duração de cada frame para
+  valores arbitrários.
 - Possibilidade de visualizar a frame anterior, para mais fácil criação de uma /imagem animada/. Esta
   técnica é designada por /onion skinning/. Os pontos da frame anterior aparecem com uma cor diferente,
   mais neutra, para distinção.
@@ -211,7 +228,7 @@ A aplicação de controlo, após finalizada, possui as seguintes features:
   percorrido. Destina-se a tentar reduzir as linhas indesejadas resultantes de saltos.
 - Possibilidade de guardar/carregar animações para/de ficheiros (formato binário)
 
-Para além destas features, tem ainda maneira de exportar animações quer copiando um array em C para o
+Para além destas features, tem ainda exportação de animações quer copiando um array em C para o
 /clipboard/ quer [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][diretamente para o PIC32 através de um protocolo binário]].
 
 ** TODO Protocolo de comunicação com o PIC32 (sobre UART)
