@@ -17,20 +17,14 @@ do osciloscópio (ou XYZ nos analógicos). Colocámos como primeira opção o [[
 de um \ac{DAC} mais rápido (menor tempo de asssentamento) do que o outro proposto nos trabalhos, da
 /Texas Instruments/, apesar de termos menor resolução: 12 bits, ao invés dos 16bits do outro.
 
-Este relatório está dividido em 2 secções principais:
-- Diário de bordo :: Nesta secção apresentamos, de maneira geral, o trabalho desenvolvido e os problemas
-     encontrados em cada dia de trabalho
-- Detalhes técnicos :: Nesta secção são apresentados todos os detalhes técnicos do nosso projeto
+* Detalhes técnicos
+** Configuração inicial
+A primeira coisa que fizemos foi ler cuidadosamente a /datasheet/ correspondente ao *MCP4728*. Também 
+revimos o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o protocolo de
+comunicação usado pelo conversor.
 
-* Diário de bordo
-** [2018-12-14 Fri] Primeira aula prática laboratorial
-Foi nesta aula que foram anunciados os projetos que tinham sido atribuídos a cada equipa, ficando a nossa
-equipa com o *MCP4728*. Assim que soubemos qual era o nosso, começámos a ler cuidadosamente a /datasheet/
-correspondente. Também aproveitámos para rever o funcionamento do [[https://en.wikipedia.org/wiki/I%25C2%25B2C][\ac{I2C}]], que é o protocolo de
-comunicação usado pelo nosso conversor.
-
-Ao fim de algum tempo, efetuámos a montagem cuidadosa do circuito pedido, assim como [[fig:Wiring][o seu desenho]] a
-computador recorrendo ao programa [[http://fritzing.org/home/][Fritzing]]. Assim que a montagem foi aprovada pelo professor, escrevemos
+Efetuámos a montagem cuidadosa do circuito pedido, assim como [[fig:Wiring][o seu desenho]] a
+computador recorrendo ao programa [[http://fritzing.org/home/][Fritzing]] e de seguida escrevemos
 um programa simples que fazia uma chamada a todos os endereços \ac{I2C} possíveis para termos a certeza
 que estávamos a ter uma comunicação bem sucedida com o dispositivo.
 
@@ -38,117 +32,38 @@ que estávamos a ter uma comunicação bem sucedida com o dispositivo.
 #+CAPTION: Representação das ligações elétricas
 [[file:Pictures/breadboard_setup.png]]
 
+
 Não só descobrimos que a montagem tinha sido feita corretamente, uma vez que estávamos a receber um
 \texttt{ACK} do MCP4728, mas também que o seu endereço não era o que vinha por defeito da fábrica -
 \texttt{0x60} - mas sim \texttt{0x61} (este dispositivo tem os 3 \ac{LSB} de endereço configuráveis,
-guardados numa EEPROM).
-
-** [2018-12-20 Thu] Trabalho em casa
-Em casa, aproveitámos para ler melhor a /datasheet/ e vimos que havia um comando /General Call Read
-Address/, que permitia obter o endereço do \acs{DAC} sem fazer /polling/ de todos. Apesar de já não ser
+guardados numa EEPROM). Verificamos na /datasheet/ que existe um comando /General Call Read
+Address/, que permite obter o endereço do \acs{DAC} sem fazer /polling/ de todos. Apesar de já não ser
 necessário, implementámos de qualquer maneira como desafio.
 
-** [2018-12-21 Fri] Segunda aula prática laboratorial
-Neste dia, implementámos o comando /Write \acs{I2C} Address Bits/ com sucesso, conseguindo mudar o
+Implementamos do comando /Write \acs{I2C} Address Bits/ foi bem sucedida, conseguindo mudar o
 endereço de \texttt{0x61} para \texttt{0x60}.
 
-Também tentámos implementar o comando /Fast Write/ para definir as tensões analógicas nas 4 saídas do
-MCP4728. Infelizmente, passámos a maior parte da aula sem obter grande sucesso, visto que não conseguimos
-ler os valores corretamente.
+A seguir queriamos testar se conseguíamos comunicar corretamente com o *MCP4728*. Enviamos um valor de 
+tensão a ser lido num dos outputs e a sua leitura foi bem sucedida.
 
-Chegando a casa, e sem nenhuma alteração quer a nível de montagem, quer a nível de código, verificámos
-que estava a funcionar o corretamente, pelo que consideramos que o multímetro de bancada no laboratório
-não se encontrava a funcionar corretamente. Após o correto funcionamento, experimentamos variar a tensão
-entre 2 valores pré-definidos, e o teste foi um sucesso.
-
-** [2018-12-22 Sat] Temporizações e início de testes modo XY
-O passo seguinte foi tentar enviar vários sinais consecutivos com o comando /Multi-Write/.
-
-Depois de algumas iterações do programa, de maneira a resolver problemas que íamos encontrando, acabámos
-por usar \SI{100}{\mega\hertz} como frequência de \acs{I2C} (/Fast Mode Plus/). As resistências de
+Resultante de uma pesquisa extensiva, e de tentativas de implementação diversas, acabámos
+por usar \SI{1}{\mega\hertz} como frequência de \acs{I2C} (/Fast Mode Plus/). As resistências de
 pull-up foram alteradas para um valor adequado: \SI{4.7}{\kilo\ohm}. Esta frequência é a máxima suportada
 pelo PIC32.
 
-Posteriormente, apercebemo-nos que seria útil medirmos o tempo de transferência do comando, para termos
-ideia dos limites que teríamos nas nossas animações. Todas as medições estão [[id:f0c8fa30-7070-4227-afd7-e13092c0d150][explicadas na secção de
-detalhes técnicos]].
-
-Finalmente, iniciámos a exploração do modo XY. Depois de testarmos o envio de 1 e de 2 pontos com
-sucesso, testamos a transmissão de uma circuferência. Para isso, utilizámos [[id:9086e8c2-73b9-4fc9-b209-bce4e496085a][estes scripts]] para gerar
-$100$ pontos da função $\sin$. Desfazando X e o Y \ang{90}, a circunferência foi desenhada com sucesso.
-
-** [2018-12-23 Sun] Testes extensivos do modo XY e início da aplicação de controlo
-Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
+Consideramos que nos encontravamos na posição de iniciar o envio de informação e visualização no osciloscópio, no modo XY.
+Depois de testarmos o envio de 1 e de 2 pontos comsucesso, testamos a transmissão de uma circuferência. Para isso, utilizámos
+ [[id:9086e8c2-73b9-4fc9-b209-bce4e496085a][estes scripts]] para gerar $100$ pontos da função $\sin$. Desfazando X e o Y \ang{90}, 
+ a circunferência foi desenhada com sucesso. Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
 raios diferentes a cada \SI{5}{\second}.
 
 Como próximo passo decidimos fazer uma letra, ainda manualmente. Desenhamos no /software Inkscape/ a
 letra =C=, num documento quadrado de 4096 pontos de lado, e amostrámos 20 pontos, definindo as suas
-coordenadas X e Y. O teste foi um sucesso.
+coordenadas X e Y. Mais uma vez, o teste foi um sucesso.
 
-Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
-extremamente trabalhoso, pelo que ponderamos duas opções:
+A partir deste ponto consideramos que já tinhamos uma base de trabalho razoável e decidimos efetuar a medição rigorosa do tempo de envio de cada pacote,
+ com o objetivo de que tudo o que fizessemos daqui para a frente tomasse partido de toda a capacidade do *MCU* e *MCP4728*.
 
-- Opção 1 :: Desenho na grelha de um ficheiro /Excel/ e exportando para /arrays/ com o uso de macros ou
-             de um programa auxiliar que lesse =.csv=
-
-- Opção 2 :: Criação de um programa para o computador em C, com interface gráfica, para que, com auxílio
-             de uma grelha, o utilizador possa desenhar a forma geométrica que quiser, sendo esta
-             exportada num formato fácil de importar no programa do MCU.
-
-Optámos pela *opção 2* uma vez que:
-- Linguagem C já era familiar
-- Tinha maior flexibilidade para implementar várias /features/ que tínhamos em mente
-- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (série) com o PIC32 e enviar
-  as animações sem recompilação ou /upload/ de programas novos
-
-A dificuldade principal era criar um programa com interface gráfica de raiz. No entanto, como já tínhamos
-investigado sobre esse tópico anteriormente, decidimos usar as bibliotecas [[https://www.glfw.org/][GLFW]] (+ [[https://github.com/raysan5/raylib/blob/master/src/rglfw.c][rglfw]] para facilitar a
-compilação), [[https://github.com/skaslev/gl3w][gl3w]] e [[https://github.com/ocornut/imgui][Dear ImGui]], que facilitaram bastante esse processo, apesar de serem todas muito
-/lightweight/ em comparação com as alternativas (tais como Qt ou GTK).
-
-No final da manhã, mesmo sem nunca ter trabalhado com as bibliotecas anteriormente, já tínhamos um
-programa com funcionalidade mínima: permitia o desenho de uma /frame/ e, com o /click/ de um botão, era
-possível exportá-la para um ficheiro /header/ em C.
-
-** TODO [2018-12-28 Fri] Melhoramento aplicação de controlo
-# Mandar isto para a parte técnica?
-Adicionámos as seguintes funcionadidades:
-- Possibilidade de desenhar várias /frames/ graficamente e de alterar o tempo de cada frame para valores
-  arbitrários.
-- Possibilidade de visualizar a frame anterior, para mais fácil reprodução de uma /imagem animada/. Esta
-  técnica é designada por /onion skinning/. Os pontos da frame anterior aparecem com uma cor diferente,
-  mais neutra, para melhor distinção.
-- Uma linha vermelha, que percorre todos os pontos pela ordem em que são desenhados, de maneira a que
-  seja evidente saltos visualizados no osciloscópio. Esta funcionalidade permite prever linhas
-  indesejadas.
-- Possibilidade de optimizar o caminho, através do algoritmo /nearest neighbour/. Esta optimização tem
-  sempre de ser averiguada visualmente pelo utilizador, visto que pode até prejudicar o caminho
-  percorrido. Destina-se a tentar reduzir as linhas indesejadas resultantes de saltos.
-
-A nível de hardware mudámos os cabos para uns de tamanho adaptado, para facilidade de transporte e
-redução de possíveis perdas. Verificamos que estes cabos não ficavam tão bem presos aos pinos fêmea do
-MCU, fazendo por vezes mau contacto. Voltámos ao /setup/ inicial.
-
-** TODO [2019-01-03 Thu] Implementação de modo Z e protocolo de comunicação
-Começámos por tentar implementar uma maneira de eliminar as linhas visualizadas entre blocos não
-consecutivos. Esta funcionalidade só será útil para osciloscópios com entrada Z.
-
-Medimos o tempo de assentamento da alteração de um valor analógico, e verificámos que o pior valor medido
-coincide com o valor máximo fornecido pela /datasheet/: \SI{6.4}{\micro\second}.
-
-# A descrição do modo Z estava incorreta! Para além disso, talvez devesse ser na parte técnica?
-
-O passo seguinte foi definirmos o protocolo de comunicação, e, consequentemente, implementá-lo. Todo o
-protocolo é [[id:ffbc339b-a6af-4465-a5f4-9419ae657372][explicado na secção de detalhes técnicos]].
-
-# Mandar para detalhes técnicos
-Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
-/little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
-que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
-
-** TODO Dias restantes....
-
-* Detalhes técnicos
 ** TODO Temporizações
 :PROPERTIES:
 :ID:       f0c8fa30-7070-4227-afd7-e13092c0d150
@@ -172,13 +87,50 @@ aproximamos este valor a 100us, dando assim uma margem para possíveis atrasados
 que estamos a correr várias funções).
 
 ** TODO Aplicação de controlo
+Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
+extremamente trabalhoso, pelo que ponderamos duas opções para otimizar o processo:
+
+- Opção 1 :: Desenho na grelha de um ficheiro /Excel/ e exportando para /arrays/ com o uso de macros ou
+             de um programa auxiliar que lesse =.csv=
+
+- Opção 2 :: Criação de um programa para o computador em C, com interface gráfica, para que, com auxílio
+             de uma grelha, o utilizador possa desenhar a forma geométrica que quiser, sendo esta
+             exportada num formato fácil de importar no programa do MCU.
+
+Optámos pela *opção 2* uma vez que:
+- Linguagem C já era familiar
+- Tinha maior flexibilidade para implementar várias /features/ que tínhamos em mente
+- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (série) com o PIC32 e enviar
+  as animações sem recompilação ou /upload/ de programas novos
+
+A dificuldade principal era criar um programa com interface gráfica de raiz. No entanto, como já tínhamos
+investigado sobre esse tópico anteriormente, decidimos usar as bibliotecas [[https://www.glfw.org/][GLFW]] (+ [[https://github.com/raysan5/raylib/blob/master/src/rglfw.c][rglfw]] para facilitar a
+compilação), [[https://github.com/skaslev/gl3w][gl3w]] e [[https://github.com/ocornut/imgui][Dear ImGui]], que facilitaram bastante esse processo, apesar de serem todas muito
+/lightweight/ em comparação com as alternativas (tais como Qt ou GTK).
+
+A aplicação de controlo, após finalizada, possui as seguintes features:
+- Possibilidade de desenhar várias /frames/ graficamente e de alterar o tempo de cada frame para valores
+  arbitrários.
+- Possibilidade de visualizar a frame anterior, para mais fácil reprodução de uma /imagem animada/. Esta
+  técnica é designada por /onion skinning/. Os pontos da frame anterior aparecem com uma cor diferente,
+  mais neutra, para melhor distinção.
+- Uma linha vermelha, que percorre todos os pontos pela ordem em que são desenhados, de maneira a que
+  seja evidente saltos visualizados no osciloscópio. Esta funcionalidade permite prever linhas
+  indesejadas.
+- Possibilidade de optimizar o caminho, através do algoritmo /nearest neighbour/. Esta optimização tem
+  sempre de ser averiguada visualmente pelo utilizador, visto que pode até prejudicar o caminho
+  percorrido. Destina-se a tentar reduzir as linhas indesejadas resultantes de saltos.
+- ...
+- ...
+
 ** TODO Protocolo de comunicação com o PIC32 (sobre UART)
-:PROPERTIES:
-:ID:       ffbc339b-a6af-4465-a5f4-9419ae657372
-:END:
+Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
+/little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
+que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
+
 * Conclusão
 Este trabalho levou ao aprofundamento do nosso conhecimento em vários domínios, nomeadamente:
-- Familizarização com a ferramente git, com recurso ao Gitlab
+- Familizarização com a ferramenta git, com recurso ao Gitlab
 - Domínio da linguagem LaTeX
 - Familiarização com a leitura de /datasheets/
 - Aprofundamento do conhecimento do microcontrolador PIC32
@@ -186,6 +138,8 @@ Este trabalho levou ao aprofundamento do nosso conhecimento em vários domínios
 - Integração de bibliotecas, mais concretamente, a biblioteca Dear ImGUI
 - Aprofundamento do conhecimento de transferência de dados, assim como os seus problemas: /framing/,
   /data loss/, etc
+- Desenvolvimento de protocolo de comunicação binário adaptado, baseado em /COBS/
+- Aprofundamento de resolução de problemas de colisão, relativamente ao desenvolvimento do jogo /Pong/
 
 Inicialmente tivemos algumas pequenas complicações, como a falha na leitura dos valores durante toda a
 segunda aula prática laboratorial, mas rapidamente foram solucionadas. O problema mais grave foi sem
