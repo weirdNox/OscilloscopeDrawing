@@ -420,16 +420,17 @@ maneira como enviamos o comando para o \ac{DAC}.
 
 * Conclusão
 Este trabalho levou ao aprofundamento do nosso conhecimento em vários domínios, nomeadamente:
-- Familizarização com a ferramenta git, com recurso ao Gitlab
-- Domínio da linguagem LaTeX
-- Familiarização com a leitura de /datasheets/
 - Aprofundamento do conhecimento do microcontrolador PIC32
+- Familiarização com a leitura de /datasheets/
 - Aprofundamento do conhecimento do protocolo de comunicação \ac{I2C}
-- Integração de bibliotecas, mais concretamente, a biblioteca Dear ImGUI
+- Desenvolvimento de protocolo de comunicação binário adaptado, baseado em /COBS/
 - Aprofundamento do conhecimento de transferência de dados, assim como os seus problemas: /framing/,
   /data loss/, etc
-- Desenvolvimento de protocolo de comunicação binário adaptado, baseado em /COBS/
-- Aprofundamento de resolução de problemas de colisão, relativamente ao desenvolvimento do jogo /Pong/
+- Integração de bibliotecas e utilização das suas APIs
+- Experiência na área de desenvolvimento de jogos, ainda que muito básicos, com problemas como resolução
+  de colisões
+- Familizarização com a ferramenta git, com recurso ao Gitlab
+- Domínio da linguagem LaTeX
 
 Inicialmente tivemos algumas pequenas complicações, como a falha na leitura dos valores durante toda a
 segunda aula prática laboratorial, mas rapidamente foram solucionadas. O problema mais grave foi sem
@@ -439,6 +440,9 @@ azul da placa responsável pela seleção do /Power Select/ encontrava-se no mod
 da nossa pesquisa, indica que o PIC32 é diretamente alimentado pela fonte ligada ao /jack DC/. Como o
 PIC32 apenas suporta 6V diretamente, acreditamos que o chip queimou. Foi evidente que algo errado
 aconteceu visto que o /IC3/ da placa ficou "furado". No mesmo dia adquirimos outra placa igual.
+
+De maneira geral, foi um trabalho muito interessante de se fazer, e muito recompensador. Foi muito
+satisfatório vermos tudo a encaixar e a funcionar, algumas vezes à primeira tentativa.
 
 Consideramos que este trabalho, enquanto futuros engenheiros, representou um processo de aprendizagem
 significativo. Tivemos a oportunidade de abordar conceitos multidisciplinares, nomeadamente de unidades
