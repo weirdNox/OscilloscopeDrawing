@@ -28,7 +28,7 @@
 enum {
     BaudRate = 115200,
     MagicNumber = 0xA0,
-    MaxPacketSize = 1<<10,
+    MaxPacketSize = 1<<13,
     GridSize = 1<<6,
 };
 
