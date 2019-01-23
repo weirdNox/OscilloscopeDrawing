@@ -110,15 +110,32 @@ typedef struct {
     enum { Mask = (sizeof(Data) - 1) };
 } rx_buff;
 
+static inline bool hasAvailable(buff *Buff, u32 NumBytes) {
+    bool Result = (Buff->Write - Buff->Read) >= NumBytes;
+    return Result;
+}
+
 static inline u8 readU8(buff *Buff) {
+    assert(hasAvailable(Buff, 1));
     u8 Result = (u8)(Buff->Data[Buff->Read]);
     Buff->Read += sizeof(Result);
     return Result;
 }
 
 static inline u16 readU16(buff *Buff) {
+    assert(hasAvailable(Buff, 2));
     u16 Result = (u16)((Buff->Data[Buff->Read+1] << 8) |
                        (Buff->Data[Buff->Read+0] << 0));
+    Buff->Read += sizeof(Result);
+    return Result;
+}
+
+static inline u32 readU32(buff *Buff) {
+    assert(hasAvailable(Buff, 4));
+    u32 Result = (u32)((Buff->Data[Buff->Read+3] << 24) |
+                       (Buff->Data[Buff->Read+2] << 16) |
+                       (Buff->Data[Buff->Read+1] <<  8) |
+                       (Buff->Data[Buff->Read+0] <<  0));
     Buff->Read += sizeof(Result);
     return Result;
 }
@@ -144,6 +161,12 @@ static void writeU8(buff *Buff, u8 Value) {
 static void writeU16(buff *Buff, u16 Value) {
     assert(Buff->Write + sizeof(Value) <= arrayCount(Buff->Data));
     *((u16 *)(Buff->Data + Buff->Write)) = Value;
+    Buff->Write += sizeof(Value);
+}
+
+static void writeU32(buff *Buff, u32 Value) {
+    assert(Buff->Write + sizeof(Value) <= arrayCount(Buff->Data));
+    *((u32 *)(Buff->Data + Buff->Write)) = Value;
     Buff->Write += sizeof(Value);
 }
 

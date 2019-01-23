@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include <common.h>
 #include <protocol.hpp>
@@ -110,6 +111,36 @@ static inline u32 calculateFps(u32 PointCount) {
     return 1000/(PointCount/10 + 3);
 }
 
+static void readFileToBuffer(FILE *File, buff *Buff) {
+    fseek(File, 0, SEEK_END);
+    u64 FileLength = ftell(File);
+    rewind(File);
+
+    assert(FileLength <= MaxPacketSize);
+    fread(Buff->Data, FileLength, 1, File);
+    Buff->Write = FileLength;
+}
+
+static void writeBufferToFile(buff *Buff, FILE *File) {
+    fwrite(Buff->Data, Buff->Write, 1, File);
+}
+
+static void reset(frame *Frames, s32 *FrameCount, s32 *SelectedFrame, s32 *LastSelected) {
+    for(int I = 0; I < MaxFrames; ++I) {
+        frame *Frame = Frames + I;
+        Frame->ActiveCount = 0;
+        for(int I = 0; I < GridSize*GridSize; ++I) {
+            point *Point = Frame->Points + I;
+            Point->Active = false;
+            Point->DisablePathBefore = false;
+        }
+        Frame->NumMilliseconds = DefaultFrameTimeMs;
+    }
+    *FrameCount = 1;
+    *SelectedFrame = 1;
+    *LastSelected = -1;
+}
+
 int main(int, char**) {
     glfwSetErrorCallback(glfwErrorCallback);
     if(!glfwInit()) {
@@ -156,6 +187,12 @@ int main(int, char**) {
     bool OnionSkinning = false;
     bool ShowPath = true;
     s32 LastSelected = -1;
+
+    enum { MaxFiles = 30, FileNameMaxLength = 100 };
+    u32 NumFiles;
+    char Files[MaxFiles][FileNameMaxLength];
+    s32 SelectedFile;
+
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -240,19 +277,126 @@ int main(int, char**) {
         }
 
         if(ImGui::Button("Completely clear animation")) {
-            for(int I = 0; I < MaxFrames; ++I) {
-                frame *Frame = Frames + I;
-                Frame->ActiveCount = 0;
-                for(int I = 0; I < GridSize*GridSize; ++I) {
-                    point *Point = Frame->Points + I;
-                    Point->Active = false;
-                    Point->DisablePathBefore = false;
+            reset(Frames, &FrameCount, &SelectedFrame, &LastSelected);
+        }
+
+        // NOTE(nox): This part is really messy and assumes everything is going to work without error
+        // checks besides the asserts for space.
+        if(ImGui::Button("Save")) {
+            ImGui::OpenPopup("Save");
+        }
+
+        ImGui::SameLine();
+
+        if(ImGui::Button("Load")) {
+            DIR *Dir = opendir("../animations");
+            if(Dir) {
+                NumFiles = 0;
+                SelectedFile = 0;
+                dirent *Entry;
+                while(Entry = readdir(Dir)) {
+                    u32 NameLength = strlen(Entry->d_name);
+                    if(NameLength <= FileNameMaxLength && NameLength > 5 &&
+                       strcmp(Entry->d_name + NameLength - 5, ".anim") == 0)
+                    {
+                        strncpy(Files[NumFiles++], Entry->d_name, FileNameMaxLength);
+                    }
                 }
-                Frame->NumMilliseconds = DefaultFrameTimeMs;
+                if(NumFiles) {
+                    ImGui::OpenPopup("Load");
+                }
             }
-            FrameCount = 1;
-            SelectedFrame = 1;
-            LastSelected = -1;
+        }
+
+        if(ImGui::BeginPopupModal("Save", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize)) {
+            static char Name[FileNameMaxLength-5] = {};
+            ImGui::InputText("Name", Name, arrayCount(Name));
+
+            ImGui::Separator();
+
+            if(ImGui::Button("Save")) {
+                char FilePath[FileNameMaxLength+50];
+                sprintf(FilePath, "../animations/%s.anim", Name);
+                FILE *File = fopen(FilePath, "wb");
+                if(File) {
+                    buff Buff = {};
+
+                    // NOTE(nox): Write protocol to file
+                    writeU8(&Buff, MagicNumber);
+                    writeU16(&Buff, 0); // NOTE(nox): Placeholder for length
+                    writeU32(&Buff, FrameCount);
+                    for(u32 I = 0; I < FrameCount; ++I) {
+                        frame *Frame = Frames + I;
+                        writeU32(&Buff, Frame->NumMilliseconds);
+                        writeU32(&Buff, Frame->ActiveCount);
+                        for(u32 J = 0; J < Frame->ActiveCount; ++J) {
+                            u32 Index = Frame->Order[J];
+                            writeU32(&Buff, Index);
+                            writeU8(&Buff, Frame->Points[Index].DisablePathBefore);
+                        }
+                    }
+                    *((u16 *)(Buff.Data + 1)) = Buff.Write-3;
+
+                    writeBufferToFile(&Buff, File);
+                    fclose(File);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if(ImGui::BeginPopupModal("Load", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize)) {
+            char *Entries[MaxFiles];
+            for(u32 I = 0; I < NumFiles; ++I) {
+                Entries[I] = Files[I];
+            }
+            ImGui::ListBox("Which animation?", &SelectedFile, Entries, NumFiles);
+
+            ImGui::Separator();
+
+            if(ImGui::Button("Load")) {
+                char FilePath[FileNameMaxLength+50];
+                sprintf(FilePath, "../animations/%s", Entries[SelectedFile]);
+                FILE *File = fopen(FilePath, "rb");
+                if(File) {
+                    buff Buff = {};
+                    readFileToBuffer(File, &Buff);
+
+                    // NOTE(nox): Parse protocol out of file
+                    u8 MagicTest = readU8(&Buff);
+                    if(MagicTest == MagicNumber) {
+                        u16 Length = readU16(&Buff);
+                        if(hasAvailable(&Buff, Length)) {
+                            reset(Frames, &FrameCount, &SelectedFrame, &LastSelected);
+                            FrameCount = readU32(&Buff);
+                            for(u32 I = 0; I < FrameCount; ++I) {
+                                frame *Frame = Frames + I;
+                                Frame->NumMilliseconds = readU32(&Buff);
+                                Frame->ActiveCount = readU32(&Buff);
+                                for(u32 J = 0; J < Frame->ActiveCount; ++J) {
+                                    u32 Index = readU32(&Buff);
+                                    point *Point = Frame->Points + Index;
+                                    Point->Active = true;
+                                    Point->DisablePathBefore = readU8(&Buff);
+                                    Frame->Order[J] = Index;
+                                }
+                            }
+                        }
+                    }
+
+                    fclose(File);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
         ImGui::End();
 
