@@ -16,11 +16,10 @@
 
 * Introdução
 Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
-do osciloscópio (ou XYZ nos analógicos). Colocámos como primeira opção o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]] visto que se tratava de
-um \ac{DAC} mais rápido (menor tempo de asssentamento) do que o outro proposto nos trabalhos, da /Texas
-Instruments/, apesar de termos menor resolução: \SI{12}{\bit}, ao invés dos \SI{16}{\bit} do outro.
+do osciloscópio (ou XYZ nos analógicos). A escolha do [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]], em detrimento
+do outro \ac{DAC} proposto prendeu-se ao facto de este ser mais rápido (menor tempo de asssentamento), apesar de term menor resolução: 
+\SI{12}{\bit}, ao invés dos \SI{16}{\bit} do \ac{DAC} da /Texas Instruments/.
 
-** Ideia do trabalho
 Inicialmente, a ideia era fazer um gerador de sinais com os sinais clássicos, tais como ondas
 sinusoidais, quadradas e triangulares, com as propriedades ajustáveis, e ainda, caso houvesse tempo, um
 gerador de sinais arbitrário, onde o utilizador pode desenhar a forma de onda que quiser.
@@ -30,7 +29,7 @@ satisfatório, uma vez que a tecnologia \ac{I2C} não é a mais indicada para es
 o tempo de assentamento do \ac{DAC}, ainda que incrivelmente baixo para algumas aplicações, resultaria
 numas ondas não muito suaves ou então de muito baixa frequência.
 
-Voltando ao /brainstorm/, lembrámo-nos de ver algumas pessoas a desenhar imagens em osciloscópios. Depois
+Desanimados com a impossibilidade de executar a nossa ideia inicial, lembrámo-nos de ver algumas pessoas a desenhar imagens em osciloscópios. Depois
 de pensar no assunto, apercebemo-nos que seria a aplicação ideal para um projeto destes, uma vez que, no
 modo XY, o tempo de assentamento era suficientemente baixo para não se notarem as transições dos saltos
 em demasia.
@@ -72,9 +71,7 @@ de uma circuferência. Para isso, utilizámos [[id:9086e8c2-73b9-4fc9-b209-bce4e
 Desfazando X e o Y \SI{90}{\degree}, a circunferência foi desenhada com sucesso.
 
 Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
-raios diferentes a cada \SI{5}{\second}.
-
-Como próximo passo decidimos fazer uma letra, ainda manualmente. Desenhámos no /software Inkscape/ a
+raios diferentes a cada \SI{5}{\second}. Depois decidimos fazer uma letra, ainda manualmente. Desenhámos no /software Inkscape/ a
 letra =C=, num documento quadrado de 4096 pontos de lado, e amostrámos 20 pontos, definindo as suas
 coordenadas X e Y, e escrevendo num array do programa que corria no MCU. Mais uma vez, o teste foi um
 sucesso.
@@ -186,6 +183,19 @@ A aplicação de controlo, após finalizada, possui as seguintes features:
 Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
 /little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
 que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
+
+O envio de dados em /plain text/ era uma opção demasiado dispendiosa - visto que cada carater requer a utilização de um byte,
+pelo que começamos por procurar soluções mais eficientes. Deparamo-nos com este [[https://www.embeddedrelated.com/showarticle/113.php][artigo]],
+que achamos muito útil. Foi ao ler este artigo que tivemos o primeiro contacto com o algoritmo /COBS/. Podemos resumir o algoritmo como cada bloco 
+que termine com o delimitador escolhido é substituído por um bloco que começa com o tamanho do próprio bloco seguido dos dados, e o pacote final termina 
+com o delimitador. A sequência de operações é a seguinte:
+(1) Ao analisar a sequência, começamos por verificar se o primeiro valor é a /escape sequence/, inicializando o tamanho a escrever a /1/
+(2) Caso não hajam mais dados a ler, escrevemos a /escape sequence/
+(3) Caso seja a /escape sequence/, escrevemos logo 01 e voltamos ao passo (1)
+(4) Caso não seja, incrementamos o tamanho a escrever em 1 unidades
+(5) Continuamos até encontrar a /escape sequence/, e aí escrevemos o tamanho seguido da sequência de dados lida diferente da /escape sequence/
+Assim, a sequência 07 09 00 01 00 00 02 03 04 05 06 00 18 22 passaria a 03 07 09 02 01 01 06 02 03 04 05 06 03 18 22 00.
+No caso da nossa implementação adaptada, o valor delimitador aparece no início (e não no fim do pacote, como na implementação original do /COBS/).
 
 * Conclusão
 Este trabalho levou ao aprofundamento do nosso conhecimento em vários domínios, nomeadamente:
