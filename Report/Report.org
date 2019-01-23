@@ -82,6 +82,9 @@ medição rigorosa do tempo de envio de cada pacote, com o objetivo de que tudo 
 a frente tomasse partido de toda a capacidade do PIC32 e do MCP4728.
 
 * Comandos utilizados e configuração \acs{I2C}
+:PROPERTIES:
+:ID:       0f228c89-f3fe-4383-83cc-ef9cc04fe44c
+:END:
 ** Frequência de funcionamento
 Tendo em conta que queríamos desenhar uma frame o mais rapidamente possível, acabámos por usar
 \SI{1}{\mega\hertz} como frequência de \ac{I2C} (/Fast Mode Plus/). As resistências de /pull-up/ foram
@@ -127,6 +130,10 @@ de $1+8$ bytes; por isso, não foi utilizado por nós na versão final.
 ** Multi-Write
 Este é o comando mais usado no programa. É o que usamos para definir as tensões das saídas X e Y para
 cada ponto de cada frame. Como só atua nas 2 saídas relevantes, apenas precisa de $1 + 6$ bytes.
+
+Se o LDAC estiver a 0 durante o comando, as saídas são alteradas mal se dá o =ACK=. Como queremos
+renderizar pontos com 2 coordenadas, queremos alterar as 2 saídas /ao mesmo tempo/, por isso apenas pomos
+o LDAC a 0 no final do comando inteiro ser transmitido.
 
 ** Select power-down bits
 Este comando é usado quando queremos desligar todas as saídas.
@@ -176,7 +183,30 @@ Este limite tem outras implicações práticas:
   - Este tamanho de grelha implica uma redução de precisão dos 12 bits que o \ac{DAC} fornece. Isto foi
     usado a nosso favor no [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][protocolo de comunicação]].
 
+* Funcionamento do programa no MCU
+O MCU tem um programa que tem estruturas que definem as 2 animações presentes nele. Essas animações podem
+ser alteradas em tempo real com o [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][protocolo de comunicação]] implementado.
+
+Com essa informação, usa os [[id:0f228c89-f3fe-4383-83cc-ef9cc04fe44c][comandos descritos anteriormente]] para fazer update das duas saídas ao mesmo
+tempo (coordenadas X e Y), para cada ponto da frame. Ao variar rápido o suficiente, a imagem fica marcada
+no osciloscópio como se tivesse sido desenhada toda ao mesmo tempo e não ponto a ponto.
+
+Como foi referido, as animações vão correr no mínimo a 30 FPS. A [[id:9f607ed4-a48d-42b9-9be1-d1f88aa70a9c][aplicação de controlo]] ao gerar a
+informação calcula os FPS a que pode correr a animação com base no número de pontos presentes em cada
+frame (quanto menos pontos, a mais FPS pode correr). Isto foi implementado como combate ao leve /flicker/
+visualizado ao desenhar a 30FPS.
+
+Os FPS são usados como frequência de um timer que, quando dispara, ativa a uma /flag/ a indicar quando se
+deve desenhar uma nova frame.
+
+Uma vez que estamos a usar apenas 6 bits de precisão, pudemos reduzir o espaço ocupado pelos arrays para
+metade *sem custo nenhum*, pois apenas precisamos de guardar 1 byte de informação. Um dos 2 bits livres
+nesse byte é usado para a modulação Z.
+
 * Aplicação de controlo
+:PROPERTIES:
+:ID:       9f607ed4-a48d-42b9-9be1-d1f88aa70a9c
+:END:
 Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
 extremamente trabalhoso, pelo que ponderámos duas opções para otimizar o processo:
 
