@@ -11,6 +11,9 @@
 #+LATEX_HEADER_EXTRA: \usepackage{xcolor}
 #+LATEX_HEADER_EXTRA: \hypersetup{colorlinks, linkcolor={red!50!black}, citecolor={blue!50!black}, urlcolor={blue!80!black}}
 
+#+LATEX_HEADER: \newcommand{\ordMas}{\textsuperscript{\b{o}}}
+#+LATEX_HEADER: \newcommand{\ordFem}{\textsuperscript{\b{a}}}
+
 * Introdução
 Este projeto consiste no uso de um \ac{DAC} para efetuar o desenho de figuras arbitrárias com o modo XY
 do osciloscópio (ou XYZ nos analógicos). Colocámos como primeira opção o [[https://www.microchip.com/wwwproducts/en/en541737][MCP4728]] visto que se tratava de
@@ -66,7 +69,7 @@ definir os outros como resistências à massa.
 Considerámos que nos encontrávamos na posição de iniciar o envio de pontos e visualização no
 osciloscópio, no modo XY. Depois de testarmos o envio de 1 e 2 pontos com sucesso, testámos a transmissão
 de uma circuferência. Para isso, utilizámos [[id:9086e8c2-73b9-4fc9-b209-bce4e496085a][estes scripts]] para gerar $100$ pontos da função $\sin$.
-Desfazando X e o Y \ang{90}, a circunferência foi desenhada com sucesso.
+Desfazando X e o Y \SI{90}{\degree}, a circunferência foi desenhada com sucesso.
 
 Inicialmente, começámos por animar o desenho ao longo do tempo, alternando entre 2 circunferências de
 raios diferentes a cada \SI{5}{\second}.
@@ -81,7 +84,7 @@ medição rigorosa do tempo de envio de cada pacote, com o objetivo de que tudo 
 a frente tomasse partido de toda a capacidade do PIC32 e do MCP4728.
 
 * Detalhes técnicos
-** TODO Comandos e configuração \acs{I2C}
+** TODO Comandos utilizados e configuração \acs{I2C}
 *** Frequência de funcionamento
 Tendo em conta que queríamos desenhar uma frame o mais rapidamente possível, acabámos por usar
 \SI{1}{\mega\hertz} como frequência de \ac{I2C} (/Fast Mode Plus/). As resistências de /pull-up/ foram
@@ -96,10 +99,29 @@ suportada pelo PIC32.
 :END:
 Estes comandos merecem atenção especial pois não consistem apenas em correr um comando.
 
+#+NAME: fig:GeneralCallReadAddr
+#+CAPTION: Diagrama do comando /General Call Read Address/, retirado da /datasheet/ do MCP4728
+[[file:Pictures/generalCallReadAddr.png]]
+
+Como podemos ver no [[fig:GeneralCallReadAddr][diagrama]] para o comando /General Call Read Address/ (e semelhantemente para o /Write
+Address Bits/), é preciso que o =LDAC= tenha um \ac{FE} entre o 8\ordMas e o 9\ordMas pulso de relógio.
+
+Obter essa \ac{FE} não foi trivial, mas depois de ler a /datasheet/ do PIC32, vimos que o bit TBF é
+anulado precisamente no instante que queremos. Para conseguirmos reagir rapidamente, definimos um /timer/
+de \SI{500}{\kilo\hertz} que verificava esse bit e colocava o LDAC a 0 no instante correto (como está
+feito no ficheiro =AddrReadWrite.cpp=).
+
 *** /Fast Write/
 :PROPERTIES:
 :ID:       56b96a2d-1623-49f4-9d64-b22e747d8ec1
 :END:
+Este comando permite atualizar os registos internos de *todas* as saídas do \ac{DAC}. As saídas em si são
+atualizadas quando o =LDAC= é (ou passa para) 0.
+
+Como este comando envia informação de todas as saídas (\SI{1+8}{\byte}), não foi utilizado por nós na
+versão final.
+
+*** /Multi-Write/
 
 ** TODO Temporizações
 :PROPERTIES:
@@ -273,6 +295,7 @@ output =
 \begin{acronym}
   \acro{DAC}{Digital-to-Analog Converter}
   \acro{I2C}[\texorpdfstring{I\textsuperscript{2}C}{I2C}]{Inter-Integrated Circuit}
+  \acro{FE}{falling edge}
   \acro{LSB}{bits menos significativos}
 \end{acronym}
 #+END_EXPORT
