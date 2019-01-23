@@ -2,7 +2,7 @@
 #+SUBTITLE: Desenho de figuras arbitrárias usando um \acs{DAC} com o modo XY
 #+AUTHOR: André Aragão e Gonçalo Santos
 #+LANGUAGE: pt
-#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
+#+LATEX_HEADER: \usepackage[margin=.7in]{geometry}
 #+LATEX_HEADER: \usepackage[portuguese]{babel}
 #+LATEX_HEADER: \usepackage[binary-units]{siunitx}
 #+LATEX_HEADER: \usepackage{indentfirst}
@@ -162,9 +162,9 @@ cursores, confirmou esse valor.
 
 No programa, aproximamos esse tempo por \SI{100}{\micro\second}, e considerámos $p_4$ desprezável.
 
-** TODO Aplicação de controlo
+** Aplicação de controlo
 Desenhar as formas manualmente, ou seja, com recurso a papel e lápis, não era viável visto que seria
-extremamente trabalhoso, pelo que ponderamos duas opções para otimizar o processo:
+extremamente trabalhoso, pelo que ponderámos duas opções para otimizar o processo:
 
 - Opção 1 :: Desenho na grelha de um ficheiro /Excel/ e exportando para /arrays/ com o uso de macros ou
              de um programa auxiliar que lesse =.csv=
@@ -176,30 +176,48 @@ extremamente trabalhoso, pelo que ponderamos duas opções para otimizar o proce
 Optámos pela *opção 2* uma vez que:
 - Linguagem C já era familiar
 - Tinha maior flexibilidade para implementar várias /features/ que tínhamos em mente
-- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (série) com o PIC32 e enviar
-  as animações sem recompilação ou /upload/ de programas novos
+- Poderia ser extendido facilmente de maneira a fazer *comunicação direta* (UART) com o PIC32 e enviar as
+  animações para o MCU sem ter de recompilar e fazer upload
 
 A dificuldade principal era criar um programa com interface gráfica de raiz. No entanto, como já tínhamos
 investigado sobre esse tópico anteriormente, decidimos usar as bibliotecas [[https://www.glfw.org/][GLFW]] (+ [[https://github.com/raysan5/raylib/blob/master/src/rglfw.c][rglfw]] para facilitar a
 compilação), [[https://github.com/skaslev/gl3w][gl3w]] e [[https://github.com/ocornut/imgui][Dear ImGui]], que facilitaram bastante esse processo, apesar de serem todas muito
 /lightweight/ em comparação com as alternativas (tais como Qt ou GTK).
 
+Aproveitamos para referir o facto da biblioteca de interface gráfica, /Dear ImGui/, não ser como as mais
+conhecidas, pois em vez de ser /Retained Mode/, é, como o nome indica, /Immediate Mode GUI/.
+
+Este paradigma foi popularizado por [[https://caseymuratori.com/about][Casey Muratori]], criador da série educativa [[https://handmadehero.org/][Handmade Hero]].
+
+Numa /IMGUI/, o código do utilizador tem a maior parte dos dados necessários para renderizar a interface, e
+a interface é quase completamente reconstruída a 60FPS, enquanto que nas /RMGUIs/ os dados estão
+guardados nas estruturas das próprias bibliotecas.
+
+Assim sendo, é muito mais fácil criar interfaces altamente dinâmicas, onde tudo pode ser alterado de uma
+frame para a outra. Esta biblioteca em específico é também muito extensível, o que foi uma vantagem pois
+o /widget/ da grelha de desenho foi feito especialmente para este projeto.
+
 A aplicação de controlo, após finalizada, possui as seguintes features:
 - Possibilidade de desenhar várias /frames/ graficamente e de alterar o tempo de cada frame para valores
   arbitrários.
-- Possibilidade de visualizar a frame anterior, para mais fácil reprodução de uma /imagem animada/. Esta
+- Possibilidade de visualizar a frame anterior, para mais fácil criação de uma /imagem animada/. Esta
   técnica é designada por /onion skinning/. Os pontos da frame anterior aparecem com uma cor diferente,
-  mais neutra, para melhor distinção.
+  mais neutra, para distinção.
 - Uma linha vermelha, que percorre todos os pontos pela ordem em que são desenhados, de maneira a que
   seja evidente saltos visualizados no osciloscópio. Esta funcionalidade permite prever linhas
   indesejadas.
 - Possibilidade de optimizar o caminho, através do algoritmo /nearest neighbour/. Esta optimização tem
   sempre de ser averiguada visualmente pelo utilizador, visto que pode até prejudicar o caminho
   percorrido. Destina-se a tentar reduzir as linhas indesejadas resultantes de saltos.
-- ...
-- ...
+- Possibilidade de guardar/carregar animações para/de ficheiros (formato binário)
+
+Para além destas features, tem ainda maneira de exportar animações quer copiando um array em C para o
+/clipboard/ quer [[id:6e5bb395-210e-4a84-81bf-a047e12a68e9][diretamente para o PIC32 através de um protocolo binário]].
 
 ** TODO Protocolo de comunicação com o PIC32 (sobre UART)
+:PROPERTIES:
+:ID:       6e5bb395-210e-4a84-81bf-a047e12a68e9
+:END:
 Antes de implementar o protocolo, verificámos a /endianess/ do computador e do PIC32. Ambos reveleram ser
 /little-endian/. Para além disso, resolvemos adicionar uma cláusula de alerta para o compilador, visto
 que todo o programa só está feito para funcionar quando ambas as partes usam /little-endian/.
